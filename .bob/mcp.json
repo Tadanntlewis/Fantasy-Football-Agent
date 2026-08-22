@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "watsonx-orchestrate-docs": {
+      "type": "streamable-http",
+      "url": "https://developer.watson-orchestrate.ibm.com/mcp"
+    }
+  }
+}

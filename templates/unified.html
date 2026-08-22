@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fantasy Agent - Multi-Platform Draft Assistant</title>
+    
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        [v-cloak] { display: none; }
+        
+        .platform-sleeper { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+        }
+        .platform-yahoo-snake { 
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); 
+        }
+        .platform-sleeper-auction { 
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); 
+        }
+        
+        .chat-message {
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .roster-card {
+            transition: all 0.3s ease;
+        }
+        
+        .roster-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div id="app" v-cloak>
+        <!-- Header with Platform Switcher -->
+        <header class="bg-white shadow-lg">
+            <div class="container mx-auto px-4 py-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <h1 class="text-2xl font-bold text-gray-800">
+                            <i class="fas fa-football-ball mr-2"></i>
+                            Fantasy Agent
+                        </h1>
+                        
+                        <!-- Platform Selector -->
+                        <div class="relative">
+                            <select v-model="selectedPlatform" 
+                                    @change="switchPlatform"
+                                    class="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 focus:outline-none focus:border-blue-500">
+                                <option value="">Select League...</option>
+                                <option value="sleeper">Sleeper SUPERFLEX (12-team)</option>
+                                <option value="yahoo-snake">Yahoo Snake (10-team, Full PPR)</option>
+                                <option value="sleeper-auction">Sleeper Auction (12-team, Half PPR, $200)</option>
+                            </select>
+                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                                <i class="fas fa-chevron-down"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Connection Status -->
+                    <div class="flex items-center space-x-2">
+                        <div :class="['w-3 h-3 rounded-full', connectionStatus === 'connected' ? 'bg-green-500' : 'bg-red-500']"></div>
+                        <span class="text-sm text-gray-600">{{ connectionStatus }}</span>
+                    </div>
+                </div>
+                
+                <!-- Platform Info Bar -->
+                <div v-if="selectedPlatform" :class="['mt-4 p-3 rounded-lg text-white', 'platform-' + selectedPlatform]">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h2 class="text-lg font-semibold">{{ platformInfo.name }}</h2>
+                            <p class="text-sm opacity-90">{{ platformInfo.description }}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm">Draft Date: {{ platformInfo.draftDate }}</p>
+                            <p class="text-sm" v-if="platformInfo.budget">Budget: ${{ platformInfo.budget }}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Draft Connection Bar -->
+                <div v-if="selectedPlatform && !draftConnected" class="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div class="space-y-3">
+                        <!-- Draft URL Input -->
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-link text-yellow-600"></i>
+                            <input v-model="draftUrl" 
+                                   type="text" 
+                                   :placeholder="getDraftUrlPlaceholder()"
+                                   class="flex-1 px-3 py-1 border rounded focus:outline-none focus:border-blue-500 text-gray-700 text-sm">
+                        </div>
+                        
+                        <!-- Team/Slot Identification -->
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-user text-yellow-600"></i>
+                            <div v-if="selectedPlatform === 'sleeper'" class="flex items-center space-x-2">
+                                <label class="text-sm text-gray-700">Draft Slot or User ID:</label>
+                                <input v-model="userDraftSlot" 
+                                       type="text" 
+                                       placeholder="1-12 or User ID"
+                                       class="w-32 px-2 py-1 border rounded focus:outline-none focus:border-blue-500 text-gray-700 text-sm">
+                            </div>
+                            <div v-else-if="selectedPlatform === 'yahoo-snake'" class="flex items-center space-x-2">
+                                <label class="text-sm text-gray-700">Draft Position:</label>
+                                <input v-model.number="userDraftSlot" 
+                                       type="number" 
+                                       min="1" 
+                                       max="10"
+                                       placeholder="1-10"
+                                       class="w-20 px-2 py-1 border rounded focus:outline-none focus:border-blue-500 text-gray-700 text-sm">
+                            </div>
+                            <div v-else-if="selectedPlatform === 'sleeper-auction'" class="flex items-center space-x-2">
+                                <label class="text-sm text-gray-700">Team Name:</label>
+                                <input v-model="userTeamName" 
+                                       type="text" 
+                                       placeholder="Slot # (e.g., 2) or team name"
+                                       class="px-3 py-1 border rounded focus:outline-none focus:border-blue-500 text-gray-700 text-sm">
+                            </div>
+                        </div>
+                        
+                        <!-- Connect Button -->
+                        <div class="flex justify-end">
+                            <button @click="connectToDraft" 
+                                    :disabled="!canConnect()"
+                                    class="px-4 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm">
+                                <i v-if="!connectingToDraft" class="fas fa-plug mr-1"></i>
+                                <i v-else class="fas fa-spinner fa-spin mr-1"></i>
+                                {{ connectingToDraft ? 'Connecting...' : 'Connect to Draft' }}
+                            </button>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-600 mt-2">
+                        <i class="fas fa-info-circle"></i>
+                        {{ getDraftUrlHelp() }}
+                        <span v-if="selectedPlatform === 'sleeper-auction'">
+                            | Enter your team name exactly as it appears in Sleeper
+                        </span>
+                        <span v-else>
+                            | Enter your draft position ({{ selectedPlatform === 'sleeper' ? '1-12' : '1-10' }})
+                        </span>
+                    </p>
+                </div>
+                
+                <!-- Draft Connected Status -->
+                <div v-if="selectedPlatform && draftConnected" class="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-check-circle text-green-600"></i>
+                            <span class="text-sm text-green-800 font-medium">Connected to Live Draft</span>
+                            <span class="text-xs text-gray-600">({{ draftUrl }})</span>
+                        </div>
+                        <button @click="disconnectFromDraft" 
+                                class="text-xs text-red-600 hover:text-red-700">
+                            <i class="fas fa-times mr-1"></i>Disconnect
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="container mx-auto px-4 py-6" v-if="selectedPlatform">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <!-- Left Column: Draft Info & Roster -->
+                <div class="space-y-6">
+                    <!-- Draft Status -->
+                    <div class="bg-white rounded-lg shadow p-4">
+                        <h3 class="text-lg font-semibold mb-3">
+                            <i class="fas fa-info-circle mr-2"></i>Draft Status
+                        </h3>
+                        <div class="space-y-2">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Current Pick:</span>
+                                <span class="font-semibold">#{{ draftStatus.currentPick }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Your Next Pick:</span>
+                                <span class="font-semibold">#{{ draftStatus.nextPick }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Round:</span>
+                                <span class="font-semibold">{{ draftStatus.round }}</span>
+                            </div>
+                            <div v-if="selectedPlatform === 'sleeper-auction'" class="flex justify-between">
+                                <span class="text-gray-600">Remaining Budget:</span>
+                                <span class="font-semibold text-green-600">${{ auctionBudget }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Your Roster -->
+                    <div class="bg-white rounded-lg shadow p-4">
+                        <h3 class="text-lg font-semibold mb-3">
+                            <i class="fas fa-users mr-2"></i>Your Roster
+                        </h3>
+                        
+                        <!-- Position Groups -->
+                        <div class="space-y-3">
+                            <div v-for="position in positions" :key="position" 
+                                 class="roster-card border rounded p-2">
+                                <div class="font-medium text-sm text-gray-700 mb-1">
+                                    {{ getPositionDisplayName(position) }} ({{ getRosterCount(position) }}/{{ getPositionLimit(position) }})
+                                </div>
+                                <div class="space-y-1">
+                                    <div v-for="player in getRosterByPosition(position)" 
+                                         :key="player.id"
+                                         class="text-sm bg-gray-50 px-2 py-1 rounded">
+                                        {{ player.name }}
+                                        <span v-if="selectedPlatform === 'sleeper-auction'" 
+                                              class="text-gray-500 ml-1">(${{ player.cost }})</span>
+                                    </div>
+                                    <div v-if="getRosterCount(position) === 0" 
+                                         class="text-sm text-gray-400 italic">
+                                        Empty
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Middle Column: Chat & Recommendations -->
+                <div class="space-y-6">
+                    <!-- Proactive Recommendations -->
+                    <div v-if="showProactive" class="bg-yellow-50 border border-yellow-200 rounded-lg shadow p-4">
+                        <h3 class="text-lg font-semibold mb-3 text-yellow-800">
+                            <i class="fas fa-lightbulb mr-2"></i>Proactive Recommendations
+                        </h3>
+                        <div class="prose prose-sm" v-html="proactiveRecommendations"></div>
+                    </div>
+                    
+                    <!-- Chat Interface -->
+                    <div class="bg-white rounded-lg shadow h-96 flex flex-col">
+                        <div class="bg-gray-50 px-4 py-3 border-b">
+                            <h3 class="text-lg font-semibold">
+                                <i class="fas fa-comments mr-2"></i>Draft Assistant
+                            </h3>
+                        </div>
+                        
+                        <!-- Messages -->
+                        <div class="flex-1 overflow-y-auto p-4 space-y-3" ref="chatContainer">
+                            <div v-for="message in messages" :key="message.id"
+                                 :class="['chat-message', message.type === 'user' ? 'text-right' : 'text-left']">
+                                <div :class="['inline-block max-w-xs px-4 py-2 rounded-lg',
+                                             message.type === 'user' ? 'bg-blue-500 text-white' : 'bg-gray-200']">
+                                    <div class="text-sm" v-html="message.content"></div>
+                                </div>
+                                <div class="text-xs text-gray-500 mt-1">
+                                    {{ formatTime(message.timestamp) }}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Input -->
+                        <div class="border-t p-4">
+                            <form @submit.prevent="sendMessage" class="flex space-x-2">
+                                <input v-model="chatInput"
+                                       type="text"
+                                       placeholder="Ask about players, strategy, or comparisons..."
+                                       class="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500"
+                                       :disabled="isLoading">
+                                <button type="submit"
+                                        :disabled="isLoading || !chatInput.trim()"
+                                        class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <i v-if="!isLoading" class="fas fa-paper-plane"></i>
+                                    <i v-else class="fas fa-spinner fa-spin"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <!-- Quick Actions -->
+                    <div class="bg-white rounded-lg shadow p-4">
+                        <h4 class="font-semibold mb-3">Quick Questions</h4>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button @click="askQuickQuestion('Who should I draft?')"
+                                    class="text-sm bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded">
+                                Who should I draft?
+                            </button>
+                            <button @click="askQuickQuestion('Best available QB?')"
+                                    class="text-sm bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded">
+                                Best QB available?
+                            </button>
+                            <button @click="askQuickQuestion('RB or WR?')"
+                                    class="text-sm bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded">
+                                RB or WR priority?
+                            </button>
+                            <button @click="askQuickQuestion('Any values falling?')"
+                                    class="text-sm bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded">
+                                Value picks?
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Right Column: Available Players then Proactive Analysis -->
+                <div class="space-y-6">
+                    <!-- Available Players -->
+                    <div class="bg-white rounded-lg shadow p-4">
+                        <h3 class="text-lg font-semibold mb-3">
+                            <i class="fas fa-list mr-2"></i>Top Available Players
+                        </h3>
+                        
+                        <!-- Scoring Type Display -->
+                        <div class="mb-2 text-sm text-gray-600">
+                            <span v-if="selectedPlatform === 'sleeper'">
+                                <i class="fas fa-info-circle"></i> SUPERFLEX (Half-PPR)
+                            </span>
+                            <span v-else-if="selectedPlatform === 'yahoo-snake'">
+                                <i class="fas fa-info-circle"></i> Standard (Full PPR)
+                            </span>
+                            <span v-else-if="selectedPlatform === 'sleeper-auction'">
+                                <i class="fas fa-info-circle"></i> Standard (Half-PPR)
+                            </span>
+                        </div>
+                        
+                        <!-- Position Filter -->
+                        <div class="mb-3">
+                            <select v-model="positionFilter" 
+                                    class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500">
+                                <option value="ALL">All Positions</option>
+                                <option value="QB">Quarterbacks</option>
+                                <option value="RB">Running Backs</option>
+                                <option value="WR">Wide Receivers</option>
+                                <option value="TE">Tight Ends</option>
+                                <option v-if="selectedPlatform === 'sleeper'" value="OP">SUPERFLEX (OP)</option>
+                                <option value="DST">Defense</option>
+                                <option value="K">Kickers</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Players List -->
+                        <div class="space-y-2 max-h-96 overflow-y-auto">
+                            <div v-for="player in filteredPlayers" :key="player.id"
+                                 @click="askAboutPlayer(player)"
+                                 class="cursor-pointer hover:bg-gray-50 p-2 rounded border">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <div class="font-medium">{{ player.name }}</div>
+                                        <div class="text-sm text-gray-600">
+                                            {{ player.position }} - {{ player.team }}
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-sm font-semibold">#{{ player.rank }}</div>
+                                        <div v-if="selectedPlatform === 'sleeper-auction'" 
+                                             class="text-sm text-green-600">${{ player.value }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Proactive Recommendations (moved from middle column) -->
+                    <div class="bg-white rounded-lg shadow p-4">
+                        <h4 class="font-semibold mb-3 flex items-center justify-between">
+                            <span>
+                                <i class="fas fa-lightbulb text-yellow-500 mr-2"></i>
+                                Proactive Analysis
+                            </span>
+                            <span v-if="proactiveLoading" class="text-sm text-gray-500">
+                                <i class="fas fa-spinner fa-spin"></i>
+                            </span>
+                        </h4>
+                        <div v-if="proactiveRecommendation" class="space-y-2">
+                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                <div class="font-medium text-blue-900 mb-1">
+                                    {{ proactiveRecommendation.title }}
+                                </div>
+                                <div class="text-sm text-blue-700">
+                                    {{ proactiveRecommendation.content }}
+                                </div>
+                                <button v-if="proactiveRecommendation.action" 
+                                        @click="executeProactiveAction"
+                                        class="mt-2 px-3 py-1 text-xs bg-blue-600 text-white hover:bg-blue-700 rounded transition-colors">
+                                    {{ proactiveRecommendation.actionText }}
+                                </button>
+                            </div>
+                        </div>
+                        <div v-else-if="draftConnected && selectedPlatform === 'sleeper'" class="text-sm text-gray-500">
+                            <i class="fas fa-search mr-1"></i>
+                            Monitoring draft for opportunities...
+                        </div>
+                        <div v-else class="text-sm text-gray-500">
+                            <i class="fas fa-plug mr-1"></i>
+                            {{ selectedPlatform === 'sleeper' ? 
+                               'Connect to draft for proactive recommendations' : 
+                               selectedPlatform === 'sleeper-auction' ?
+                               'Connect to auction draft for budget strategy' :
+                               'Proactive analysis coming soon for Yahoo' }}
+                        </div>
+                    </div>
+                    
+                    <!-- Recent Picks (for snake drafts) -->
+                    <div v-if="selectedPlatform !== 'yahoo-auction'" class="bg-white rounded-lg shadow p-4">
+                        <h3 class="text-lg font-semibold mb-3">
+                            <i class="fas fa-history mr-2"></i>Recent Picks
+                        </h3>
+                        <div class="space-y-2">
+                            <div v-for="pick in recentPicks" :key="pick.id"
+                                 class="text-sm border-l-4 border-gray-300 pl-3">
+                                <div class="font-medium">{{ pick.player }}</div>
+                                <div class="text-gray-600">
+                                    Pick #{{ pick.number }} - Team {{ pick.team }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <!-- Welcome Screen (when no platform selected) -->
+        <div v-if="!selectedPlatform" class="container mx-auto px-4 py-12">
+            <div class="max-w-2xl mx-auto text-center">
+                <h2 class="text-3xl font-bold mb-6">Welcome to Fantasy Agent</h2>
+                <p class="text-lg text-gray-600 mb-8">
+                    Select your league from the dropdown above to get started with AI-powered draft assistance.
+                </p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
+                    <div class="bg-white rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition"
+                         @click="selectedPlatform = 'sleeper'; switchPlatform()">
+                        <div class="text-purple-600 text-4xl mb-4">
+                            <i class="fas fa-bed"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold mb-2">Sleeper SUPERFLEX</h3>
+                        <p class="text-gray-600">12-team, Half-PPR</p>
+                        <p class="text-sm text-gray-500 mt-2">Draft: Complete</p>
+                    </div>
+                    
+                    <div class="bg-white rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition"
+                         @click="selectedPlatform = 'yahoo-snake'; switchPlatform()">
+                        <div class="text-pink-600 text-4xl mb-4">
+                            <i class="fab fa-yahoo"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold mb-2">Yahoo Snake Draft</h3>
+                        <p class="text-gray-600">10-team, Full PPR</p>
+                        <p class="text-sm text-gray-500 mt-2">Draft: Aug 19</p>
+                    </div>
+                    
+                    <div class="bg-white rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition"
+                         @click="selectedPlatform = 'sleeper-auction'; switchPlatform()">
+                        <div class="text-blue-600 text-4xl mb-4">
+                            <i class="fas fa-gavel"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold mb-2">Sleeper Auction Draft</h3>
+                        <p class="text-gray-600">12-team, Half-PPR, $200</p>
+                        <p class="text-sm text-gray-500 mt-2">Draft: Aug 24</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+        
+        createApp({
+            data() {
+                return {
+                    // Platform selection
+                    selectedPlatform: '',
+                    platformInfo: {},
+                    
+                    // Connection
+                    ws: null,
+                    connectionStatus: 'disconnected',
+                    
+                    // Draft connection
+                    draftUrl: '',
+                    draftConnected: false,
+                    connectingToDraft: false,
+                    draftMonitorInterval: null,
+                    userDraftSlot: null,  // For Sleeper and Yahoo Snake
+                    userTeamName: '',     // For Sleeper Auction
+                    
+                    // Draft status
+                    draftStatus: {
+                        currentPick: 0,
+                        nextPick: 0,
+                        round: 1
+                    },
+                    
+                    // Auction specific
+                    auctionBudget: 200,
+                    
+                    // Roster
+                    roster: [],
+                    myRoster: [],  // User's actual drafted players
+                    positions: [],  // Will be set based on selected platform
+                    
+                    // Chat
+                    messages: [],
+                    chatInput: '',
+                    isLoading: false,
+                    
+                    // Recommendations
+                    showProactive: false,
+                    proactiveRecommendation: null,
+                    proactiveLoading: false,
+                    proactiveRecommendations: '',
+                    
+                    // Players
+                    availablePlayers: [],
+                    allPlayers: [],  // All players from rankings
+                    draftedPlayerIds: [],  // IDs of drafted players
+                    draftedPlayerNames: [],  // Names of all drafted players
+                    positionFilter: 'ALL',
+                    recentPicks: []
+                };
+            },
+            
+            computed: {
+                filteredPlayers() {
+                    if (this.positionFilter === 'ALL') {
+                        return this.availablePlayers.slice(0, 30);
+                    }
+                    return this.availablePlayers
+                        .filter(p => p.position === this.positionFilter)
+                        .slice(0, 30);
+                }
+            },
+            
+            methods: {
+                async switchPlatform() {
+                    if (!this.selectedPlatform) return;
+                    
+                    // Update positions for the selected platform
+                    this.updatePositionsForPlatform();
+                    
+                    // Update platform info
+                    const platformConfigs = {
+                        'sleeper': {
+                            name: 'Sleeper SUPERFLEX League',
+                            description: '12-team, Half-PPR, SUPERFLEX position',
+                            draftDate: 'Snake Draft',
+                            teams: 12,
+                            scoring: 'Half-PPR',
+                            superflex: true
+                        },
+                        'yahoo-snake': {
+                            name: 'Yahoo Snake Draft League',
+                            description: '10-team, Full PPR, 6PT Passing TDs',
+                            draftDate: 'Snake Draft',
+                            teams: 10,
+                            scoring: 'Full PPR',
+                            superflex: false
+                        },
+                        'sleeper-auction': {
+                            name: 'Sleeper Auction League',
+                            description: '12-team, Half-PPR, $200 Budget',
+                            draftDate: 'Auction Draft',
+                            teams: 12,
+                            scoring: 'Half-PPR',
+                            superflex: false,
+                            budget: 200
+                        }
+                    };
+                    
+                    this.platformInfo = platformConfigs[this.selectedPlatform];
+                    
+                    // Connect to server
+                    try {
+                        const response = await fetch('/api/select-platform', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ platform: this.selectedPlatform })
+                        });
+                        
+                        const data = await response.json();
+                        if (data.status === 'success') {
+                            this.addMessage('system', `Connected to ${this.platformInfo.name}`);
+                            this.connectWebSocket();
+                            this.loadInitialData();
+                        }
+                    } catch (error) {
+                        console.error('Failed to switch platform:', error);
+                        this.addMessage('system', 'Failed to connect to platform. Please try again.');
+                    }
+                },
+                
+                connectWebSocket() {
+                    if (this.ws) {
+                        this.ws.close();
+                    }
+                    
+                    this.ws = new WebSocket('ws://localhost:3001/ws');
+                    
+                    this.ws.onopen = () => {
+                        this.connectionStatus = 'connected';
+                        this.ws.send(JSON.stringify({
+                            type: 'platform_select',
+                            platform: this.selectedPlatform
+                        }));
+                    };
+                    
+                    this.ws.onmessage = (event) => {
+                        const data = JSON.parse(event.data);
+                        this.handleWebSocketMessage(data);
+                    };
+                    
+                    this.ws.onclose = () => {
+                        this.connectionStatus = 'disconnected';
+                        // Attempt reconnect after 3 seconds
+                        setTimeout(() => {
+                            if (this.selectedPlatform) {
+                                this.connectWebSocket();
+                            }
+                        }, 3000);
+                    };
+                },
+                
+                handleWebSocketMessage(data) {
+                    switch(data.type) {
+                        case 'draft_update':
+                            this.updateDraftStatus(data);
+                            break;
+                        case 'proactive_recommendation':
+                            this.showProactive = true;
+                            this.proactiveRecommendations = data.content;
+                            break;
+                        case 'draft_response':
+                            this.handleDraftResponse(data.response);
+                            break;
+                    }
+                },
+                
+                async loadInitialData() {
+                    // Load rankings for the selected platform with cache bust
+                    try {
+                        // Add timestamp to prevent caching
+                        const response = await fetch(`/api/rankings/${this.selectedPlatform}?t=${Date.now()}`);
+                        const rankings = await response.json();
+                        
+                        console.log(`Loaded ${rankings.length} players for ${this.selectedPlatform}`);
+                        
+                        // Transform to player format - handle both field naming conventions
+                        this.allPlayers = rankings.slice(0, 200).map(player => ({
+                            id: player.player_id || player.id,
+                            name: player.player_name || player.name,
+                            position: player.player_position_id || player.position,
+                            team: player.player_team_id || player.team,
+                            rank: player.rank_ecr || player.rank || 999,
+                            value: this.selectedPlatform === 'sleeper-auction' ? 
+                                   player.auction_value || this.calculateAuctionValue(player.rank_ecr || player.rank || 999) : null
+                        }));
+                        
+                        // Initially all players are available (will be filtered when draft data loads)
+                        this.availablePlayers = [...this.allPlayers];
+                        
+                        // If we have drafted player IDs, filter now
+                        if (this.draftedPlayerIds && this.draftedPlayerIds.length > 0) {
+                            this.updateAvailablePlayers();
+                        }
+                        
+                        // Log first few players to verify correct rankings
+                        console.log('Top 3 players:', this.availablePlayers.slice(0, 3).map(p => `${p.name} (${p.position})`));
+                    } catch (error) {
+                        console.error('Failed to load rankings:', error);
+                    }
+                },
+                
+                calculateAuctionValue(rank) {
+                    // Simple auction value calculation
+                    if (rank <= 10) return Math.floor(60 - (rank * 2));
+                    if (rank <= 30) return Math.floor(40 - (rank - 10));
+                    if (rank <= 60) return Math.floor(20 - ((rank - 30) / 2));
+                    if (rank <= 100) return Math.floor(10 - ((rank - 60) / 5));
+                    return 1;
+                },
+                
+                async sendMessage() {
+                    if (!this.chatInput.trim() || this.isLoading) return;
+                    
+                    const message = this.chatInput;
+                    this.chatInput = '';
+                    this.addMessage('user', message);
+                    this.isLoading = true;
+                    
+                    try {
+                        const response = await fetch('/api/draft-query', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                platform: this.selectedPlatform,
+                                query: message,
+                                context: {
+                                    roster: this.roster,
+                                    draftStatus: this.draftStatus,
+                                    budget: this.auctionBudget
+                                }
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        if (data.status === 'success') {
+                            this.addMessage('assistant', data.response);
+                        } else {
+                            this.addMessage('system', 'Failed to get response. Please try again.');
+                        }
+                    } catch (error) {
+                        console.error('Query error:', error);
+                        this.addMessage('system', 'Error processing your request.');
+                    } finally {
+                        this.isLoading = false;
+                    }
+                },
+                
+                askQuickQuestion(question) {
+                    this.chatInput = question;
+                    this.sendMessage();
+                },
+                
+                askAboutPlayer(player) {
+                    this.chatInput = `Tell me about ${player.name}`;
+                    this.sendMessage();
+                },
+
+                executeProactiveAction() {
+                    if (this.proactiveRecommendation && this.proactiveRecommendation.action) {
+                        // Execute the recommended action (e.g., draft a player)
+                        this.chatInput = this.proactiveRecommendation.action;
+                        this.sendMessage();
+                    }
+                },
+
+                async checkProactiveRecommendations() {
+                    if (!this.draftConnected || (!this.selectedPlatform.startsWith('sleeper') && !this.selectedPlatform.startsWith('yahoo'))) return;
+                    
+                    this.proactiveLoading = true;
+                    try {
+                        const response = await fetch('/api/proactive-check', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({
+                                platform: this.selectedPlatform,
+                                context: {
+                                    currentPick: this.draftStatus.currentPick,
+                                    roster: this.roster
+                                }
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        if (data.recommendation) {
+                            this.proactiveRecommendation = data.recommendation;
+                        }
+                    } catch (error) {
+                        console.error('Proactive check error:', error);
+                    } finally {
+                        this.proactiveLoading = false;
+                    }
+                },
+                
+                addMessage(type, content) {
+                    this.messages.push({
+                        id: Date.now(),
+                        type: type,
+                        content: content,
+                        timestamp: new Date()
+                    });
+                    
+                    // Scroll to bottom
+                    this.$nextTick(() => {
+                        if (this.$refs.chatContainer) {
+                            this.$refs.chatContainer.scrollTop = this.$refs.chatContainer.scrollHeight;
+                        }
+                    });
+                },
+                
+                updateDraftStatus(data) {
+                    this.draftStatus = data.draftStatus || this.draftStatus;
+                    
+                    // Update auction budget if present
+                    if (data.draftStatus && data.draftStatus.remainingBudget !== undefined) {
+                        this.auctionBudget = data.draftStatus.remainingBudget;
+                    }
+                    
+                    // Update roster with proper data
+                    if (data.roster) {
+                        this.myRoster = data.roster;
+                        this.roster = data.roster;  // For backward compatibility
+                    }
+                    
+                    // Update recent picks with player names
+                    if (data.recentPicks) {
+                        this.recentPicks = data.recentPicks.map(pick => ({
+                            id: pick.id || pick.pick_no,
+                            player: pick.player || (pick.metadata?.first_name && pick.metadata?.last_name ? 
+                                    `${pick.metadata.first_name} ${pick.metadata.last_name}` : 
+                                    pick.player_id || 'Unknown Player'),
+                            number: pick.pick || pick.pick_no,
+                            team: pick.team || pick.picked_by,
+                            round: pick.round
+                        }));
+                    }
+                    
+                    // Store drafted player names to filter available players
+                    if (data.draftedPlayerNames) {
+                        this.draftedPlayerNames = data.draftedPlayerNames;
+                        // Filter available players to exclude drafted ones
+                        this.updateAvailablePlayers();
+                    }
+                    
+                    // Backward compatibility with IDs
+                    if (data.draftedPlayerIds) {
+                        this.draftedPlayerIds = data.draftedPlayerIds;
+                    }
+                    
+                    if (this.selectedPlatform === 'sleeper-auction' && data.budget !== undefined) {
+                        this.auctionBudget = data.budget;
+                    }
+                },
+                
+                updateAvailablePlayers() {
+                    // Filter out drafted players from the available list
+                    // Since IDs don't match between Sleeper and FantasyPros, match by name
+                    if (this.allPlayers) {
+                        // Helper function to normalize player names (remove Jr., Sr., II, III, etc.)
+                        const normalizeName = (name) => {
+                            let normalized = name.toLowerCase()
+                                .replace(/\s+(jr\.?|sr\.?|ii+|iii+|iv|v)$/i, '')  // Remove suffixes
+                                .replace(/['']/g, '')  // Normalize apostrophes
+                                .trim();
+                            
+                            // Special case: Cam Ward (rookie QB) is "Cameron Ward" in Sleeper
+                            if (normalized === 'cam ward') {
+                                return ['cam ward', 'cameron ward'];
+                            }
+                            
+                            return normalized;
+                        };
+                        
+                        // Create a set of normalized drafted player names (from all teams, not just ours)
+                        const draftedNames = new Set();
+                        (this.draftedPlayerNames || []).forEach(name => {
+                            const normalized = normalizeName(name);
+                            if (Array.isArray(normalized)) {
+                                normalized.forEach(n => draftedNames.add(n));
+                            } else {
+                                draftedNames.add(normalized);
+                            }
+                        });
+                        
+                        // Filter out players whose normalized names match drafted players
+                        this.availablePlayers = this.allPlayers.filter(player => {
+                            const normalized = normalizeName(player.name);
+                            let isDrafted = false;
+                            
+                            if (Array.isArray(normalized)) {
+                                isDrafted = normalized.some(n => draftedNames.has(n));
+                            } else {
+                                isDrafted = draftedNames.has(normalized);
+                            }
+                            
+                            // Log mismatches for debugging
+                            if (isDrafted && player.rank <= 50) {
+                                console.log(`Filtering out drafted player: ${player.name}`);
+                            }
+                            
+                            return !isDrafted;
+                        }).slice(0, 50);  // Top 50 available
+                        
+                        console.log(`Filtered to ${this.availablePlayers.length} available players from ${this.allPlayers.length} total`);
+                        console.log(`Excluded ${draftedNames.size} drafted players`);
+                    }
+                },
+                
+                getRosterByPosition(position) {
+                    // Use myRoster which contains the actual drafted players
+                    const roster = this.myRoster || this.roster || [];
+                    
+                    // Map position codes for flexibility
+                    const positionMap = {
+                        'DST': ['DST', 'DEF'],
+                        'DEF': ['DST', 'DEF'],
+                        'Bench': ['QB', 'RB', 'WR', 'TE', 'K', 'DST', 'DEF'],  // All positions can be on bench
+                        'BN': ['QB', 'RB', 'WR', 'TE', 'K', 'DST', 'DEF'],
+                        'FLEX': ['RB', 'WR', 'TE'],
+                        'SUPERFLEX': ['QB', 'RB', 'WR', 'TE'],
+                        'W/R': ['WR', 'RB'],
+                        'W/R/T': ['WR', 'RB', 'TE']
+                    };
+                    
+                    // For flex positions, check if player fits
+                    const validPositions = positionMap[position] || [position];
+                    
+                    if (position === 'Bench' || position === 'BN') {
+                        // For bench, return all players beyond starting lineup
+                        // This is simplified - would need proper logic based on league settings
+                        return roster.slice(9);  // Assuming 9 starters
+                    }
+                    
+                    return roster.filter(p => validPositions.includes(p.position));
+                },
+                
+                getRosterCount(position) {
+                    return this.getRosterByPosition(position).length;
+                },
+                
+                getPositionLimit(position) {
+                    // Detailed roster requirements based on league settings
+                    const limits = {
+                        'sleeper': {  // SUPERFLEX League - 18 total roster spots
+                            'QB': 3,      // 1 QB + 1 SUPERFLEX (shown as QB) + 1 bench
+                            'RB': 5,      // 2 RB + 2 FLEX potential + bench
+                            'WR': 6,      // 3 WR + 2 FLEX potential + bench
+                            'TE': 2,      // 1 TE + 1 FLEX potential/bench
+                            'FLEX': 2,    // 2 FLEX spots
+                            'SUPERFLEX': 1, // 1 SUPERFLEX spot
+                            'K': 1,       // 1 Kicker
+                            'DST': 1,     // 1 Defense
+                            'Bench': 6    // 6 Bench spots
+                        },
+                        'yahoo-snake': {  // Full PPR - 16 total roster spots
+                            'QB': 1,      // 1 QB
+                            'RB': 2,      // 2 RB
+                            'WR': 2,      // 2 WR  
+                            'TE': 1,      // 1 TE
+                            'W/R': 1,     // 1 W/R Flex
+                            'K': 1,       // 1 Kicker
+                            'DEF': 1,     // 1 Defense
+                            'BN': 7       // 7 Bench spots
+                        },
+                        'sleeper-auction': {  // Half PPR - 13 total roster spots (NO KICKER)
+                            'QB': 1,      // 1 QB
+                            'RB': 2,      // 2 RB
+                            'WR': 2,      // 2 WR
+                            'TE': 1,      // 1 TE
+                            'W/R/T': 1,   // 1 W/R/T Flex
+                            'DEF': 1,     // 1 Defense
+                            'BN': 5,      // 5 Bench spots
+                            'IR': 1       // 1 IR spot
+                        }
+                    };
+                    return limits[this.selectedPlatform]?.[position] || 0;
+                },
+                
+                updatePositionsForPlatform() {
+                    // Set positions array based on selected platform
+                    const platformPositions = {
+                        'sleeper': ['QB', 'RB', 'WR', 'TE', 'FLEX', 'SUPERFLEX', 'K', 'DST', 'Bench'],
+                        'yahoo-snake': ['QB', 'RB', 'WR', 'TE', 'W/R', 'K', 'DEF', 'BN'],
+                        'sleeper-auction': ['QB', 'RB', 'WR', 'TE', 'W/R/T', 'DEF', 'BN', 'IR']
+                    };
+                    this.positions = platformPositions[this.selectedPlatform] || [];
+                },
+                
+                getPositionDisplayName(position) {
+                    // Map position codes to friendly display names
+                    const displayNames = {
+                        'QB': 'Quarterback',
+                        'RB': 'Running Back',
+                        'WR': 'Wide Receiver',
+                        'TE': 'Tight End',
+                        'FLEX': 'Flex (RB/WR/TE)',
+                        'SUPERFLEX': 'SuperFlex (QB/RB/WR/TE)',
+                        'W/R': 'W/R Flex',
+                        'W/R/T': 'W/R/T Flex',
+                        'K': 'Kicker',
+                        'DST': 'Defense/ST',
+                        'DEF': 'Defense',
+                        'Bench': 'Bench',
+                        'BN': 'Bench',
+                        'IR': 'Injured Reserve'
+                    };
+                    return displayNames[position] || position;
+                },
+                
+                formatTime(timestamp) {
+                    const date = new Date(timestamp);
+                    return date.toLocaleTimeString('en-US', { 
+                        hour: 'numeric', 
+                        minute: '2-digit' 
+                    });
+                },
+                
+                handleDraftResponse(response) {
+                    // Handle the response from draft query
+                    this.isLoading = false;
+                    if (response && response.content) {
+                        this.addMessage('assistant', response.content);
+                    }
+                },
+                
+                getDraftUrlPlaceholder() {
+                    const placeholders = {
+                        'sleeper': 'Enter Sleeper draft URL (e.g., sleeper.com/draft/nfl/...)',
+                        'yahoo-snake': 'Enter Yahoo draft URL (e.g., football.fantasysports.yahoo.com/f1/...)',
+                        'sleeper-auction': 'Enter Sleeper auction URL (e.g., sleeper.com/draft/...)'
+                    };
+                    return placeholders[this.selectedPlatform] || 'Enter draft URL';
+                },
+                
+                getDraftUrlHelp() {
+                    const help = {
+                        'sleeper': 'Copy the URL from your Sleeper draft room',
+                        'yahoo-snake': 'Any Yahoo URL works (draftclient, league page, team page)',
+                        'sleeper-auction': 'Copy the URL from your Sleeper auction draft room'
+                    };
+                    return help[this.selectedPlatform] || 'Enter the URL of your live draft';
+                },
+                
+                canConnect() {
+                    // Check if we have a draft URL
+                    if (!this.draftUrl) return false;
+                    
+                    // Check if we have team identification
+                    if (this.selectedPlatform === 'sleeper-auction') {
+                        return this.userTeamName && this.userTeamName.trim().length > 0;
+                    } else {
+                        // Sleeper and Yahoo Snake need draft slot
+                        const maxSlot = this.selectedPlatform === 'sleeper' ? 12 : 10;
+                        return this.userDraftSlot && this.userDraftSlot >= 1 && this.userDraftSlot <= maxSlot;
+                    }
+                },
+                
+                async connectToDraft() {
+                    if (!this.canConnect()) return;
+                    
+                    this.connectingToDraft = true;
+                    
+                    try {
+                        const requestData = {
+                            platform: this.selectedPlatform,
+                            url: this.draftUrl
+                        };
+                        
+                        // Add team identification
+                        if (this.selectedPlatform === 'sleeper-auction') {
+                            requestData.team_name = this.userTeamName;
+                        } else {
+                            requestData.draft_slot = this.userDraftSlot;
+                        }
+                        
+                        const response = await fetch('/api/connect-draft', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(requestData)
+                        });
+                        
+                        const data = await response.json();
+                        if (data.status === 'success') {
+                            this.draftConnected = true;
+                            const teamInfo = this.selectedPlatform === 'sleeper-auction' 
+                                ? `Team: ${this.userTeamName}`
+                                : `Slot: ${this.userDraftSlot}`;
+                            this.addMessage('system', `Connected to ${this.platformInfo.name} draft! (${teamInfo})`);
+                            
+                            // Start monitoring draft
+                            this.startDraftMonitoring();
+                        } else {
+                            this.addMessage('system', `Failed to connect: ${data.message}`);
+                        }
+                    } catch (error) {
+                        console.error('Draft connection error:', error);
+                        this.addMessage('system', 'Failed to connect to draft. Please check the URL and try again.');
+                    } finally {
+                        this.connectingToDraft = false;
+                    }
+                },
+                
+                disconnectFromDraft() {
+                    this.draftConnected = false;
+                    this.draftUrl = '';
+                    this.userDraftSlot = null;
+                    this.userTeamName = '';
+                    
+                    // Stop monitoring
+                    if (this.draftMonitorInterval) {
+                        clearInterval(this.draftMonitorInterval);
+                        this.draftMonitorInterval = null;
+                    }
+                    
+                    this.addMessage('system', 'Disconnected from draft');
+                },
+                
+                startDraftMonitoring() {
+                    // Clear any existing interval first
+                    if (this.draftMonitorInterval) {
+                        clearInterval(this.draftMonitorInterval);
+                        this.draftMonitorInterval = null;
+                    }
+                    
+                    // Poll more frequently for auction (2s) vs snake drafts (10s)
+                    const pollInterval = this.selectedPlatform === 'sleeper-auction' ? 2000 : 10000;
+                    console.log(`Starting draft monitoring for ${this.selectedPlatform} with ${pollInterval}ms interval`);
+                    this.draftMonitorInterval = setInterval(async () => {
+                        console.log(`[${new Date().toLocaleTimeString()}] Polling draft status...`);
+                        try {
+                            const response = await fetch('/api/draft-status', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    platform: this.selectedPlatform,
+                                    url: this.draftUrl
+                                })
+                            });
+                            
+                            const data = await response.json();
+                            if (data.status === 'success') {
+                                // Update draft status
+                                if (data.draftStatus) {
+                                    this.updateDraftStatus(data);
+                                }
+                                
+                                // Check for proactive recommendations
+                                if (data.recommendation) {
+                                    // Force Vue to update by creating new object
+                                    this.proactiveRecommendation = {...data.recommendation};
+                                    console.log(`[${new Date().toLocaleTimeString()}] Updated proactive:`, data.recommendation.title);
+                                } else if (this.selectedPlatform === 'sleeper-auction') {
+                                    console.log(`[${new Date().toLocaleTimeString()}] No recommendation in response`);
+                                }
+                            }
+                        } catch (error) {
+                            console.error('Draft monitoring error:', error);
+                        }
+                    }, pollInterval); // Poll based on platform type
+                }
+            },
+            
+            mounted() {
+                // Welcome message
+                this.addMessage('system', 'Welcome to Fantasy Agent! Please select your league from the dropdown above to get started.');
+            },
+            
+            beforeUnmount() {
+                if (this.ws) {
+                    this.ws.close();
+                }
+                if (this.draftMonitorInterval) {
+                    clearInterval(this.draftMonitorInterval);
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

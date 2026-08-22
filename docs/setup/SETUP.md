@@ -1,0 +1,138 @@
+# 🚀 Fantasy Football Draft Assistant - Setup Guide
+
+## Quick Setup for Testing
+
+### 1. Clone & Install
+```bash
+git clone https://github.com/adamrubinsky/FantasyAgent.git
+cd FantasyAgent
+pip3 install --user python-dotenv aiohttp click rich
+```
+
+### 2. Configure Your Credentials
+```bash
+# Copy the example file
+cp .env.example .env.local
+
+# Edit .env.local with your actual Sleeper info:
+# SLEEPER_USERNAME=your-username
+# SLEEPER_LEAGUE_ID=your-league-id
+```
+
+### 3. Test Everything
+```bash
+# Test API connection
+python3 main.py test
+
+# View your league
+python3 main.py league
+
+# See available QBs (critical for SUPERFLEX!)
+python3 main.py available -p QB -l 10
+```
+
+## How Credentials Work
+
+The app automatically loads credentials in this order:
+1. **`.env.local`** - Your real credentials (local only, not in Git)
+2. **`.env`** - Placeholder file (safe for public GitHub)
+
+This means:
+- ✅ Your real data works locally
+- ✅ Public repo stays secure
+- ✅ No credential management needed
+
+## Available Commands
+
+```bash
+# Setup & Testing
+python3 main.py test                    # Test connections
+python3 main.py league                  # League details
+
+# Draft Day Commands
+python3 main.py monitor                 # 🚨 Start real-time draft monitoring
+python3 main.py monitor -p QB           # Monitor with QB filter
+python3 main.py monitor --no-available  # Monitor without available players table
+python3 main.py status                  # Show current draft status (one-time)
+
+# Player Analysis
+python3 main.py available               # All players (top 20)
+python3 main.py available -p QB -l 10   # Top 10 QBs
+python3 main.py available -p RB -l 15   # Top 15 RBs
+python3 main.py available -p WR -l 20   # Top 20 WRs
+python3 main.py available -p TE -l 5    # Top 5 TEs
+
+# League Setup (IMPORTANT - Run this first!)
+python3 main.py setup                   # Analyze your league settings (Half-PPR, SUPERFLEX, etc.)
+
+# FantasyPros Rankings & Strategy
+python3 main.py rankings                # Top 20 consensus rankings (tailored to YOUR league!)
+python3 main.py rankings -p QB -l 10    # Top 10 QB rankings with ADP/tiers
+python3 main.py strategy                # SUPERFLEX draft strategy guide
+python3 main.py value -p 85             # Find value picks at draft pick #85
+
+# AI-Powered Analysis (NEW in Day 4!) 🤖
+python3 main.py ask "Should I draft Josh Allen in round 1?"        # Natural language questions
+python3 main.py compare "Josh Allen" "Lamar Jackson"               # AI player comparisons
+python3 main.py recommend -p 37                                    # AI draft recommendations
+```
+
+## Getting Your Sleeper Info
+
+1. **Username**: Your Sleeper app username
+2. **League ID**: Found in your league URL:
+   - Go to your league in Sleeper app/web
+   - Copy the long number from the URL
+   - Example: `https://sleeper.app/leagues/1234567890123456789`
+   - League ID is: `1234567890123456789`
+
+## AI Features Setup (Optional but Recommended!)
+
+To enable AI-powered analysis and natural language queries:
+
+1. **Get Claude API Key**:
+   - Go to [console.anthropic.com](https://console.anthropic.com/)
+   - Sign up and get your API key
+
+2. **Add to Environment**:
+   ```bash
+   # Edit .env.local and add:
+   ANTHROPIC_API_KEY=your-actual-claude-api-key-here
+   ```
+
+3. **Install Package** (if not already installed):
+   ```bash
+   pip3 install --user anthropic
+   ```
+
+4. **Test AI Features**:
+   ```bash
+   python3 main.py ask "Should I draft Josh Allen?"
+   python3 main.py compare "Josh Allen" "Lamar Jackson"
+   ```
+
+**Without AI Setup**: All features work with fallback responses and guidance.
+
+## Troubleshooting
+
+**"Please set SLEEPER_USERNAME..."**
+- Make sure `.env.local` exists with your real credentials
+
+**"python: command not found"**
+- Use `python3` instead of `python`
+
+**"No module named 'aiohttp'"**
+- Run: `pip3 install --user python-dotenv aiohttp click rich anthropic`
+
+**"AI Assistant Unavailable"**
+- Add ANTHROPIC_API_KEY to .env.local (see AI Features Setup above)
+
+**SSL certificate errors**
+- This is handled automatically for macOS development
+
+## What You Should See
+
+✅ **Successful test**: Shows your league name and player count  
+✅ **SUPERFLEX detection**: Should show "SUPERFLEX League: YES"  
+✅ **High QB ranks**: Josh Allen = rank 2, Lamar Jackson = rank 3  
+✅ **Fast responses**: All commands should be <1 second
