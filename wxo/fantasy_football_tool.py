@@ -195,17 +195,16 @@ def get_all_drafted_players(draft_id: str) -> str:
     """
     try:
         picks = _get(f"https://api.sleeper.app/v1/draft/{draft_id}/picks")
-        result = [
-            {
-                "pick": int(pick["pick_no"]) if pick.get("pick_no") is not None else None,
-                "round": int(pick["round"]) if pick.get("round") is not None else None,
-                "name": (str((pick.get("metadata") or {}).get("first_name") or "") + " " + str((pick.get("metadata") or {}).get("last_name") or "")).strip(),
-                "pos": str((pick.get("metadata") or {}).get("position") or ""),
-                "team": str((pick.get("metadata") or {}).get("team") or ""),
-            }
-            for pick in picks
-        ]
-        return json.dumps({"total_picks": len(result), "picks": result})
+        lines = []
+        for pick in picks:
+            m = pick.get("metadata") or {}
+            name = (str(m.get("first_name") or "") + " " + str(m.get("last_name") or "")).strip()
+            pos = str(m.get("position") or "")
+            team = str(m.get("team") or "")
+            pick_no = pick.get("pick_no", "?")
+            lines.append(f"{pick_no}. {name} ({pos}, {team})")
+        total = len(lines)
+        return f"Total drafted: {total}\n" + "\n".join(lines)
     except Exception as e:
         return json.dumps({"error": str(e)})
 
