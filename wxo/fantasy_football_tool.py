@@ -120,3 +120,63 @@ def get_draft_picks(draft_id: str) -> str:
         return json.dumps(result)
     except Exception as e:
         return json.dumps({"error": str(e)})
+
+
+@tool
+def get_available_players(draft_id: str, position: str, limit: int = 20) -> str:
+    """
+    Get top available (undrafted) fantasy football players for a given position.
+    Automatically checks the current draft picks and removes already-drafted players.
+    Always use this tool instead of get_player_rankings when making draft recommendations.
+
+    Args:
+        draft_id: The Sleeper draft ID to check current picks against.
+        position: Player position to filter by. One of: QB, RB, WR, TE, K, DEF.
+        limit: Number of top available players to return. Defaults to 20, max 50.
+
+    Returns:
+        JSON string with top undrafted players sorted by rank, including name, team, position, age.
+    """
+    try:
+        # Fetch draft picks and all players in parallel (sequential here for simplicity)
+        picks = _get(f"https://api.sleeper.app/v1/draft/{draft_id}/picks")
+        players = _get("https://api.sleeper.app/v1/players/nfl")
+
+        pos = position.strip().upper()
+        limit = min(int(limit), 50)
+
+        # Build set of already-drafted player IDs
+        drafted_ids = set()
+        for pick in picks:
+            pid = pick.get("player_id")
+            if pid:
+                drafted_ids.add(str(pid))
+
+        # Filter to available players at the requested position
+        available = []
+        for pid, p in players.items():
+            if str(pid) in drafted_ids:
+                continue
+            if not p.get("active") or not p.get("team"):
+                continue
+            positions = p.get("fantasy_positions") or []
+            if pos not in positions:
+                continue
+            rank = p.get("search_rank")
+            if rank is None or int(rank) >= 999:
+                continue
+            available.append({
+                "rank": int(rank),
+                "name": (str(p.get("first_name") or "") + " " + str(p.get("last_name") or "")).strip(),
+                "team": str(p.get("team") or ""),
+                "position": pos,
+                "age": int(p["age"]) if p.get("age") is not None else None,
+                "years_exp": int(p["years_exp"]) if p.get("years_exp") is not None else None,
+                "injury_status": str(p["injury_status"]) if p.get("injury_status") else None,
+            })
+
+        available.sort(key=lambda x: x["rank"])
+        return json.dumps(available[:limit])
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
