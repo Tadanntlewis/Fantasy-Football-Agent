@@ -182,29 +182,46 @@ def get_available_players(draft_id: str, position: str, limit: int = 20) -> str:
 
 
 @tool
-def get_all_drafted_players(draft_id: str) -> str:
+def get_all_drafted_players(draft_id: str, round_number: int = 0) -> str:
     """
-    Get a compact list of ALL players drafted so far in a Sleeper draft.
-    Returns only the essential fields to avoid context limits.
+    Get ALL players drafted so far in a Sleeper draft, optionally filtered by round.
+    Use round_number=0 to get all picks. Use round_number=1 for round 1 only, etc.
+    To get all 170 picks call this once with round_number=0.
 
     Args:
         draft_id: The Sleeper draft ID.
+        round_number: Round to filter by (0 = all rounds, 1-17 = specific round).
 
     Returns:
-        JSON string with every drafted player: round, pick number, name, position, team.
+        Plain text list of every drafted player grouped by round with name, position, team.
     """
     try:
         picks = _get(f"https://api.sleeper.app/v1/draft/{draft_id}/picks")
-        lines = []
+
+        # Group by round
+        rounds = {}
         for pick in picks:
+            r = int(pick.get("round") or 0)
+            if round_number != 0 and r != round_number:
+                continue
             m = pick.get("metadata") or {}
             name = (str(m.get("first_name") or "") + " " + str(m.get("last_name") or "")).strip()
             pos = str(m.get("position") or "")
             team = str(m.get("team") or "")
-            pick_no = pick.get("pick_no", "?")
-            lines.append(f"{pick_no}. {name} ({pos}, {team})")
-        total = len(lines)
-        return f"Total drafted: {total}\n" + "\n".join(lines)
+            slot = int(pick.get("draft_slot") or pick.get("pick_no") or 0)
+            if r not in rounds:
+                rounds[r] = []
+            rounds[r].append(f"  {slot}. {name} ({pos}, {team})")
+
+        if not rounds:
+            return f"No picks found for round {round_number}."
+
+        lines = [f"Total picks: {sum(len(v) for v in rounds.values())}"]
+        for r in sorted(rounds.keys()):
+            lines.append(f"Round {r}:")
+            lines.extend(rounds[r])
+
+        return "\n".join(lines)
     except Exception as e:
         return json.dumps({"error": str(e)})
 
