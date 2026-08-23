@@ -180,3 +180,32 @@ def get_available_players(draft_id: str, position: str, limit: int = 20) -> str:
     except Exception as e:
         return json.dumps({"error": str(e)})
 
+
+@tool
+def get_all_drafted_players(draft_id: str) -> str:
+    """
+    Get a compact list of ALL players drafted so far in a Sleeper draft.
+    Returns only the essential fields to avoid context limits.
+
+    Args:
+        draft_id: The Sleeper draft ID.
+
+    Returns:
+        JSON string with every drafted player: round, pick number, name, position, team.
+    """
+    try:
+        picks = _get(f"https://api.sleeper.app/v1/draft/{draft_id}/picks")
+        result = [
+            {
+                "pick": int(pick["pick_no"]) if pick.get("pick_no") is not None else None,
+                "round": int(pick["round"]) if pick.get("round") is not None else None,
+                "name": (str((pick.get("metadata") or {}).get("first_name") or "") + " " + str((pick.get("metadata") or {}).get("last_name") or "")).strip(),
+                "pos": str((pick.get("metadata") or {}).get("position") or ""),
+                "team": str((pick.get("metadata") or {}).get("team") or ""),
+            }
+            for pick in picks
+        ]
+        return json.dumps({"total_picks": len(result), "picks": result})
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+

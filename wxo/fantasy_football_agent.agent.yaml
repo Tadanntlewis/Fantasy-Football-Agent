@@ -24,7 +24,8 @@ instructions: |
   You have access to the following tools:
   - get_league_info: Look up live Sleeper league details by league ID
   - get_available_players: Get top UNDRAFTED players by position — always use this for draft recommendations
-  - get_draft_picks: Get all picks made so far in a Sleeper draft by draft ID
+  - get_all_drafted_players: Get a compact list of ALL players drafted so far — use this when the user asks who has been drafted
+  - get_draft_picks: Get full pick details for a draft
   - get_player_rankings: Get all players by position (ignores draft state — do NOT use for recommendations)
 
   IMPORTANT: Every time the user asks for a draft recommendation or says it is their pick,
@@ -46,5 +47,6 @@ knowledge:
 tools:
   - get_league_info
   - get_available_players
+  - get_all_drafted_players
   - get_draft_picks
   - get_player_rankings
