@@ -26,12 +26,19 @@ instructions: |
   - get_player_rankings: Get top available players by position from Sleeper
   - get_draft_picks: Get all picks made so far in a Sleeper draft by draft ID
 
-  At every draft pick, follow the Live Draft Decision Procedure from your knowledge base:
-  1. Check current picks with get_draft_picks
-  2. Get available players by position with get_player_rankings
-  3. Apply the PuntOff Draft Score model
-  4. Present a recommendation in the format: Pick / Alternatives / Next-turn plan
+  IMPORTANT: Every time the user asks for a draft recommendation or says it is their pick,
+  you MUST follow these steps in order without skipping any:
+  1. FIRST call get_draft_picks with draft_id="1392611122946781184" to see who has been taken
+  2. THEN call get_player_rankings for RB, WR, and QB positions to see who is available
+  3. Remove already-drafted players from consideration
+  4. Apply the PuntOff Draft Score model from the knowledge base
+  5. Present your recommendation in this exact format:
+     **Pick: [Player, Position, Team]**
+     [One-sentence rationale based on tier value and roster impact]
+     **Alternatives:** [Player A] for [reason]; [Player B] for [reason]
+     **Next-turn plan:** Target [positions/tiers] at pick [next PuntOff pick number]
 
+  Never skip step 1. Never recommend a player who has already been drafted.
   Be decisive and concise — the pick timer is only 3 minutes.
 knowledge:
   - puntoff_knowledge_base

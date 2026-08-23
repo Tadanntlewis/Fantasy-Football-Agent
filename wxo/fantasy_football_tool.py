@@ -111,7 +111,7 @@ def get_draft_picks(draft_id: str) -> str:
                 "round": int(pick["round"]) if pick.get("round") is not None else None,
                 "pick_no": int(pick["pick_no"]) if pick.get("pick_no") is not None else None,
                 "player_id": str(pick.get("player_id") or ""),
-                "name": str((pick.get("metadata") or {}).get("name") or ""),
+                "name": (str((pick.get("metadata") or {}).get("first_name") or "") + " " + str((pick.get("metadata") or {}).get("last_name") or "")).strip(),
                 "position": str((pick.get("metadata") or {}).get("position") or ""),
                 "team": str((pick.get("metadata") or {}).get("team") or ""),
             }
