@@ -225,3 +225,87 @@ def get_all_drafted_players(draft_id: str, round_number: int = 0) -> str:
     except Exception as e:
         return json.dumps({"error": str(e)})
 
+
+@tool
+def get_position_tiers(draft_id: str, position: str) -> str:
+    """
+    Get live fantasy football player tiers for a position, with already-drafted players removed.
+    Tiers are calculated dynamically from Sleeper rankings using rank gaps.
+    Use this tool when making draft recommendations to understand tier breaks.
+
+    Args:
+        draft_id: The Sleeper draft ID — used to exclude already-drafted players.
+        position: Player position. One of: QB, RB, WR, TE, K, DEF.
+
+    Returns:
+        Plain text tier breakdown showing available players grouped by tier,
+        with name, team, age and rank for each player.
+    """
+    try:
+        picks = _get(f"https://api.sleeper.app/v1/draft/{draft_id}/picks")
+        players = _get("https://api.sleeper.app/v1/players/nfl")
+
+        pos = position.strip().upper()
+
+        # Build set of drafted player IDs
+        drafted_ids = {str(pick.get("player_id")) for pick in picks if pick.get("player_id")}
+
+        # Collect available players at position
+        available = []
+        for pid, p in players.items():
+            if str(pid) in drafted_ids:
+                continue
+            if not p.get("active") or not p.get("team"):
+                continue
+            positions = p.get("fantasy_positions") or []
+            if pos not in positions:
+                continue
+            rank = p.get("search_rank")
+            if rank is None or int(rank) >= 999:
+                continue
+            available.append({
+                "rank": int(rank),
+                "name": (str(p.get("first_name") or "") + " " + str(p.get("last_name") or "")).strip(),
+                "team": str(p.get("team") or ""),
+                "age": int(p["age"]) if p.get("age") is not None else None,
+                "years_exp": int(p["years_exp"]) if p.get("years_exp") is not None else None,
+            })
+
+        available.sort(key=lambda x: x["rank"])
+
+        if not available:
+            return f"No available {pos} players found."
+
+        # Build tiers using rank gaps
+        # A new tier starts when the gap to the next player exceeds a threshold
+        tier_thresholds = {"QB": 8, "RB": 5, "WR": 5, "TE": 8, "K": 10, "DEF": 10}
+        threshold = tier_thresholds.get(pos, 6)
+
+        tiers = []
+        current_tier = [available[0]]
+        for i in range(1, len(available)):
+            gap = available[i]["rank"] - available[i - 1]["rank"]
+            if gap >= threshold:
+                tiers.append(current_tier)
+                current_tier = [available[i]]
+            else:
+                current_tier.append(available[i])
+            # Cap at top 8 tiers to keep output concise
+            if len(tiers) >= 8:
+                break
+        tiers.append(current_tier)
+
+        # Format output
+        lines = [f"Available {pos} Tiers (live, undrafted only):"]
+        for i, tier in enumerate(tiers[:8], 1):
+            lines.append(f"\nTier {i}:")
+            for p in tier:
+                age_str = f", age {p['age']}" if p.get("age") else ""
+                lines.append(f"  {p['name']} ({p['team']}{age_str}) [rank {p['rank']}]")
+
+        lines.append(f"\nTotal available {pos}: {len(available)}")
+        return "\n".join(lines)
+
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
