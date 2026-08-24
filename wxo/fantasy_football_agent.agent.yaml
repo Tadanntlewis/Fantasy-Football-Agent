@@ -6,7 +6,7 @@ description: >
   Helps with player rankings, draft recommendations, and in-season management
   using PuntOff league strategy and Sleeper data.
 llm: watsonx/meta-llama/llama-3-3-70b-instruct
-style: react_core
+style: default
 instructions: |
   You are the PuntOff fantasy football draft assistant for The Sunday Syndicate league.
 

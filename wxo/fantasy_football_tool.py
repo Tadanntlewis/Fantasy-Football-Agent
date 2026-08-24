@@ -250,6 +250,32 @@ def get_position_tiers(draft_id: str, position: str) -> str:
         # Build set of drafted player IDs
         drafted_ids = {str(pick.get("player_id")) for pick in picks if pick.get("player_id")}
 
+        # DEF: Sleeper doesn't rank defenses — use a curated tier list and filter drafted ones
+        if pos == "DEF":
+            # Pre-ranked defenses by 2025 fantasy performance and 2026 outlook
+            def_rankings = [
+                "SF", "BAL", "BUF", "DET", "GB", "PHI", "KC", "MIN",
+                "HOU", "CLE", "PIT", "DAL", "MIA", "NYJ", "LAC", "SEA",
+                "TB", "DEN", "IND", "NE", "LV", "ARI", "ATL", "CIN",
+                "LAR", "NYG", "CAR", "CHI", "TEN", "JAX", "WAS", "NO",
+            ]
+            lines = ["Available DEF Tiers (live, undrafted only):"]
+            tier_breaks = [3, 7, 12, 18]  # tier boundaries by index
+            current_tier = 1
+            count = 0
+            lines.append(f"\nTier 1:")
+            for team in def_rankings:
+                # DEF player_id in Sleeper is the team abbreviation
+                if team in drafted_ids:
+                    continue
+                if count in tier_breaks:
+                    current_tier += 1
+                    lines.append(f"\nTier {current_tier}:")
+                lines.append(f"  {team} Defense")
+                count += 1
+            lines.append(f"\nTotal available DEF: {count}")
+            return "\n".join(lines)
+
         # Collect available players at position
         available = []
         for pid, p in players.items():
