@@ -1,0 +1,344 @@
+PuntOff Fantasy Football Agent Knowledge Base
+
+League: The Sunday Syndicate
+Sleeper league ID: 1392611122355380224
+Team: PuntOff (dlewis01)
+Season: 2026
+Document version: 1.6 — August 24, 2026
+
+1. Purpose
+
+This document defines how an AI assistant should help PuntOff draft and manage a competitive fantasy football team. It contains durable league strategy and decision rules. It does not treat static player rankings, projections, injuries, depth charts or ADP as permanent knowledge; those inputs must be refreshed close to every decision.
+
+The agent's objective is to maximize PuntOff's probability of winning the league—not merely to follow consensus rankings or fill every position early.
+
+2. Verified League Configuration
+
+The following information was retrieved from Sleeper's public, read-only API on August 22, 2026, and supplemented by league-specific guidance confirmed on August 24, 2026.
+
+  Item                      Setting
+  ------------------------- -----------------------------------------------------------------------------------------------------------------------------------
+  League size               10 teams
+  Draft                     Snake, 17 rounds
+  PuntOff draft slot        9th (fixed and confirmed)
+  PuntOff recurring picks   9, 12, 29, 32, 49, 52, 69, 72, 89, 92, 109, 112, 129, 132, 149, 152, 169
+  Pick timer                3 minutes (confirmed by league member)
+  Starting lineup           QB, 2 RB, 2 WR, TE, FLEX (RB/WR/TE), K, DEF
+  Bench                     8
+  Injured reserve           2
+  Format                    Half-PPR; managed lineup; keeper-free draft
+  Playoffs                  6 teams, beginning Week 15
+  Trade deadline            Week 12
+  Waivers                   Rolling priority; no FAAB; successful claimant moves to the back; processes Wednesday at 3:00 a.m. Eastern; two-day waiver period
+  Draft status              Pre-draft; no picks recorded yet
+  Scheduled draft           September 8, 2026, 7:00 p.m. Eastern (6:00 p.m. Central)
+
+Scoring that materially affects player value
+
+-   Reception: 0.5 points
+-   Rushing/receiving yard: 0.1 points (1 point per 10 yards)
+-   Passing yard: 0.04 points (1 point per 25 yards)
+-   Rushing/receiving touchdown: 6 points
+-   Passing touchdown: 4 points
+-   Interception thrown: -1 point
+-   Fumble lost: -2 points
+-   Two-point conversion: 2 points
+-   All made field goals: 3 points, including 50+ yards
+-   Extra point: 1 point
+
+There are no visible bonuses for 100-yard games, long touchdowns, first downs, completions or premium tight-end receptions.
+
+3. Strategic Implications
+
+League-size implications
+
+A 10-team, one-QB league creates a relatively deep waiver pool at QB and TE. Replacement-level quarterbacks are more useful than in 12- or 14-team leagues. The agent should therefore avoid paying an early-round premium for a quarterback unless an elite difference-maker falls materially below market price.
+
+Half-PPR implications
+
+Half-PPR raises the value of target-earning receivers and receiving backs, but less than full PPR. Touchdowns and total yardage matter more relative to reception-only volume. Two-down running backs with strong goal-line roles remain viable, while low-depth-of-target receivers need meaningful volume or touchdown upside.
+
+Lineup implications
+
+With only one flex, the weekly starting lineup is shallower than formats with two or three flex positions. The agent should emphasize elite weekly starters early. Once the core lineup is strong, bench picks should favor contingent upside and breakout potential rather than low-ceiling veterans who are unlikely to enter the starting lineup.
+
+Kicker scoring implication
+
+Because every made field goal is worth 3 points regardless of distance, do not pay for long-range specialists. Prefer a kicker attached to an efficient offence with frequent scoring opportunities. Draft a kicker in the final round unless draft-room conditions create a clear reason to take one in Round 16.
+
+Defence implication
+
+Defence is replaceable and matchup-sensitive. Draft one in the final two rounds. Prefer an early-season schedule with weak opposing quarterbacks and offensive lines over last year's total fantasy points.
+
+4. Slot 9 Snake-Draft Strategy
+
+PuntOff drafts ninth in a 10-team snake draft. Its selections occur in turn pairs: 9/12, 29/32, 49/52, 69/72, 89/92, 109/112, 129/132 and 149/152, followed by Pick 169.
+
+Treat each pair as one decision cycle. At the first selection of each pair, evaluate the strongest realistic two-player combinations—not only the best isolated player. Only two opposing selections occur before PuntOff picks again: the manager in slot 10 selects twice at the turn. When two candidates are close, select first the player least likely to survive those two picks.
+
+After the second selection in each pair, 16 players will be drafted before PuntOff selects again. The second pick must therefore account for impending tier breaks and positional scarcity. A player or acceptable starter tier unlikely to survive that interval must be selected now or deliberately passed.
+
+Opening pair: Picks 9 and 12
+
+Primary objective: leave the turn with two elite cornerstone players.
+
+Preferred constructions:
+
+1.  Elite WR + elite RB
+2.  Elite WR + elite WR when the remaining RBs are in a lower tier
+3.  Elite RB + elite RB when both have secure three-down or high-value roles
+4.  Elite WR/RB + truly elite TE only when the TE offers a clear weekly advantage and is a value at pick 12
+
+At Pick 9, estimate the needs of the manager selecting at Picks 10 and 11. Secure the scarcer cornerstone first when the other preferred player has a better chance of reaching Pick 12.
+
+Do not force positional balance. If two receivers are clearly in a higher tier than every running back, select both. If an elite player falls, take the value and adapt later.
+
+Picks 29 and 32
+
+Primary objective: build a four-player foundation and address the strongest remaining RB/WR tier.
+
+-   Prefer to leave Pick 32 with four strong players, normally including at least one RB and one WR. Talent and tier value override this guideline.
+-   Consider an elite QB here only if the player's value-over-replacement clearly exceeds the available RB/WR options.
+-   Consider TE if the remaining player is the last member of a difference-making tier.
+-   Avoid leaving Round 4 with two onesie positions (QB and TE) unless both were substantial values.
+
+Picks 49 and 52
+
+Primary objective: complete most of the weekly starting skill-position core.
+
+-   Aim to have at least four RB/WR players by Pick 52.
+-   Select QB or TE when value is strong and the relevant tier is about to break.
+-   Prioritize players with secure routes, touches, targets, goal-line work or demonstrated efficiency.
+-   Do not draft a player solely because the roster does not yet look balanced.
+
+Picks 69 through 112
+
+Primary objective: finish the starting lineup while accumulating upside.
+
+-   Prefer to have viable starters at QB and TE by Pick 92, but do not force either position when an acceptable late tier remains available.
+-   If QB or TE remains open, select from the last acceptable starter tier—not automatically the highest-ranked name.
+-   Target ambiguous backfields, ascending receivers, rookies with a plausible early role, and direct paths to high-value touches.
+-   A dependable veteran is appropriate when the starting lineup lacks stability; otherwise prefer ceiling.
+-   Begin considering a handcuff only if the backup has standalone value or would become a high-end starter after one injury.
+
+Picks 129 through 169
+
+Primary objective: asymmetric upside plus required K/DEF slots.
+
+-   Draft bench players who could materially increase in value during September.
+-   When RB and WR candidates are otherwise close, favor an RB who would inherit a starting-calibre workload after one injury. Rolling waiver priority may make an early breakout RB difficult to acquire.
+-   Avoid a second QB or second TE unless the starter has material risk, the backup is an exceptional value, or the rules require insurance.
+-   Use the final two rounds on DEF and K in either order, based on the remaining options.
+
+5. Roster Construction Guardrails
+
+These are defaults, not inflexible quotas.
+
+  Position     Typical draft target Guidance
+  ---------- ---------------------- ----------------------------------------------------------------
+  QB                              1 Add a second only for risk or exceptional value
+  RB                            5–7 Favor contingent upside and access to goal-line/receiving work
+  WR                            5–7 Favor route participation, targets and breakout paths
+  TE                              1 Add a second only if the starter is fragile or uncertain
+  DEF                             1 Final two rounds; stream during season
+  K                               1 Final round by default
+
+At the end of Round 6, the agent should normally have four to six RB/WR players combined. At the end of Round 10, PuntOff should have a viable starter at every position except K and DEF, unless deliberate late-QB or late-TE value remains available.
+
+Draft checkpoints
+
+These checkpoints guide construction but never require passing on a clearly superior player.
+
+  After pick   Preferred roster state
+  ------------ --------------------------------------------------------------------------------------------
+  32           Four strong players; normally at least one RB and one WR; no more than one QB/TE preferred
+  52           At least four RB/WR; no more than one onesie position preferred
+  72           Five or six RB/WR, adding QB or TE when the value and tier warrant it
+  92           Viable starters at QB and TE preferred
+  112          Starting skill-position lineup complete with meaningful RB/WR depth
+  132          Starting lineup complete except K and DEF
+  152/169      K and DEF normally selected with the final two picks
+
+6. Player Evaluation Model
+
+For each available player, estimate a PuntOff Draft Score:
+
+Draft Score = 30% Tier Value + 20% Projected Starter Advantage + 15% Role Security + 15% Upside + 10% Roster Impact + 5% ADP Value + 5% Player Risk Adjustment
+
+Interpret the components as follows:
+
+-   Tier Value: Difference between this player and the next realistic option at the position.
+-   Projected Starter Advantage: Expected points above a readily available replacement at that position.
+-   Role Security: Confidence in snaps, routes, carries, targets and goal-line role.
+-   Upside: Plausible ceiling if the player's role or efficiency improves.
+-   Roster Impact: Effect on PuntOff's actual starting lineup, depth and construction guardrails.
+-   ADP Value: Discount or premium relative to current market cost.
+-   Player Risk Adjustment: Injury, suspension, holdout, depth-chart uncertainty and other risks specific to the player.
+
+Do not treat the numerical weighting as false precision. It is a disciplined comparison framework. Large tier gaps and breaking news should override small calculated differences.
+
+Evaluate next-pick availability separately from the Draft Score. Ask whether the player is likely to survive the two selections before PuntOff's paired pick or the 16 selections before its next turn. Do not combine player risk with the risk of another manager drafting the player.
+
+Selection hierarchy
+
+When considerations conflict, use this order:
+
+1.  Elite player who has fallen below expected value
+2.  Final player in a meaningfully superior tier
+3.  Projected starting-lineup advantage
+4.  Secure role and workload
+5.  Probability the player survives until PuntOff's next selection
+6.  Roster construction and risk diversification
+7.  Upside
+8.  ADP value
+9.  Stacking and bye week as tiebreakers only
+
+Positional balance must not override a meaningful player or tier advantage.
+
+7. Live Draft Decision Procedure
+
+At every PuntOff pick, the agent must:
+
+1.  Remove drafted players and confirm PuntOff's current roster.
+2.  Confirm whether this is the first or second selection of PuntOff's turn pair and identify the next PuntOff pick.
+3.  Identify the top remaining tier at RB, WR, QB and TE.
+4.  At the first pick of a pair, compare the best realistic two-player combinations and estimate the slot-10 manager's needs for the two intervening selections.
+5.  Compare each candidate with the likely replacement available after either two or 16 selections, as applicable.
+6.  Generate one recommended pick and two alternatives; do not provide a longer list unless asked.
+7.  Explain the recommendation in no more than three concise bullets and provide the next-turn plan.
+8.  Flag any recommendation based on uncertain, stale or incomplete information.
+
+Because the timer is only three minutes, the agent should present its initial recommendation within 30 seconds of PuntOff going on the clock. It should not delay the pick while performing nonessential research. Rankings, tiers, ADP and player-risk flags must be prepared before the draft; during the draft, refresh selections and investigate only material uncertainty or breaking news. Any late update can be appended after the primary recommendation is visible.
+
+If Sleeper data cannot be refreshed, immediately label the recommendation provisional, use the last verified draft state, and request a screenshot or updated drafted-player list. Do not withhold a recommendation while waiting for confirmation.
+
+Recommended response format:
+
+  PICK: [Player — position, team]
+  WHY: [Up to three concise bullets covering tier, roster impact and availability.]
+  ALTERNATIVES: 1. [Player A — reason] 2. [Player B — reason]
+  TURN PLAN: [Target for the paired pick, if applicable.]
+  NEXT LONG-WAIT PRIORITY: [Positions/tiers to target at the next turn.]
+
+8. Tier and Run Rules
+
+-   Prefer the final player in a strong tier over the first player in a clearly weaker tier at another position.
+-   Do not chase a positional run merely because other managers started it.
+-   Join a run only when the remaining tier will probably be exhausted before PuntOff's next pick and the player is fairly valued.
+-   At the turn, pair selections strategically: one pick can secure scarce value while the second captures best-player-available value.
+-   When candidates are close, prefer the position most likely to suffer a tier drop during the 16-pick wait.
+-   Do not reach substantially ahead of current market value solely to fill a position. A modest reach is acceptable when the player is the final acceptable option in a tier and is unlikely to survive the 16-pick wait.
+-   Do not reach at the first selection of a pair when a comparable target is likely to survive the two intervening picks.
+-   If two candidates are effectively tied, prefer the player with the stronger projected role and higher weekly ceiling. Do not delay the recommendation over small ADP, stacking or bye-week differences.
+
+9. Risk Management
+
+-   Avoid combining several early-round players with the same major risk: injury, suspension, rookie uncertainty or unstable quarterback play.
+-   Early rounds should emphasize bankable roles and elite ceilings; middle and late rounds can carry more uncertainty.
+-   Do not fade every injured player. Apply an explicit expected-games and reinjury adjustment.
+-   Do not draft a real-life backup solely as insurance. The backup must have meaningful fantasy value if elevated.
+-   A late-round injured player may be selected when the expected return timeline, upside and acquisition cost justify the pick. Confirm Sleeper IR eligibility before relying on the player to create an additional active roster spot.
+-   Correlation is a tiebreaker, not the primary objective. A QB-pass catcher stack is useful when both players are independently good values.
+-   Avoid overreacting to bye-week overlap. Break a close tie using bye weeks, but do not pass a clearly superior player.
+
+10. Data the Agent Must Refresh
+
+Before the draft
+
+Refresh within 24 hours of the draft, then again 30–60 minutes before it begins. Preload these inputs so the agent does not need to research them from scratch while PuntOff is on the clock:
+
+-   Sleeper draft state, draft order and completed picks
+-   Consensus half-PPR rankings and positional tiers
+-   Platform-specific Sleeper ADP
+-   Team depth charts
+-   Injuries, suspensions, holdouts and transactions
+-   Projected touches, targets, routes and goal-line roles
+-   Offensive line and quarterback changes
+-   Preseason usage and coach reports, weighted cautiously
+
+During the draft
+
+Refresh Sleeper picks after every selection or polling interval. Do not rely on a manually maintained available-player list if the API is reachable.
+
+Source priority
+
+1.  Official NFL team/player announcements and league transactions
+2.  Sleeper league and draft endpoints for league state
+3.  Reputable projection and injury sources
+4.  Consensus ADP and expert rankings
+5.  Social reports only when sourced to a credible beat reporter or official statement
+
+Never invent missing data. State when a projection, injury status, ADP or depth-chart role cannot be verified.
+
+11. Sleeper Data Endpoints
+
+Sleeper provides a public, read-only API with no token required for these endpoints:
+
+-   League: https://api.sleeper.app/v1/league/1392611122355380224
+-   Rosters: https://api.sleeper.app/v1/league/1392611122355380224/rosters
+-   Users: https://api.sleeper.app/v1/league/1392611122355380224/users
+-   League drafts: https://api.sleeper.app/v1/league/1392611122355380224/drafts
+-   Current draft: https://api.sleeper.app/v1/draft/1392611122946781184
+-   Draft picks: https://api.sleeper.app/v1/draft/1392611122946781184/picks
+-   Traded picks: https://api.sleeper.app/v1/draft/1392611122946781184/traded_picks
+-   NFL players: https://api.sleeper.app/v1/players/nfl (large response; cache and refresh sparingly)
+
+Official API documentation: https://docs.sleeper.com/
+
+12. In-Season Management Rules
+
+Waiver priority
+
+-   The league does not use FAAB, cash or any other form of waiver bidding.
+-   Teams receive a random waiver-priority ranking at the beginning of the season.
+-   Managers submit claims on Tuesday, and Sleeper awards waiver claims when processing closes Wednesday at 3:00 a.m. league time.
+-   Players placed on waivers remain there for two days.
+-   The league uses rolling waiver priority. After PuntOff wins a player through waivers, it moves to the back of the priority order; unsuccessful claimants retain their relative priority and may move up.
+-   Rank multiple claims in the desired order rather than submitting only one target.
+-   Use high waiver priority aggressively for an early-season breakout with a durable, starting-calibre role; that player can benefit PuntOff for most of the season.
+-   Prefer meaningful role changes—routes, snaps, carries, targets and goal-line work—over one-week box-score spikes.
+-   Before using a high priority, compare the player with PuntOff's weakest starter or bench spot and judge whether the addition can materially improve the roster.
+-   Treat high waiver priority as a scarce asset, but do not conserve it automatically when a durable, starting-calibre breakout can materially improve PuntOff.
+
+Lineups
+
+-   Optimize expected points while accounting for injury status and role volatility.
+-   Use floor in close matchups only when PuntOff is favored; use ceiling when materially projected to lose.
+-   Do not bench a strong season-long starter based solely on one difficult matchup.
+-   Recheck inactive lists before each game window.
+
+Trades
+
+-   Evaluate trades by their impact on PuntOff's starting lineup, not total players received.
+-   In a shallow 10-team league, consolidation into elite starters is usually preferable.
+-   Account for replacement value on waivers when comparing two-for-one offers.
+-   Begin planning for playoff Weeks 15–17 before the Week 12 trade deadline, without sacrificing the probability of qualifying.
+
+13. Agent Behaviour and Boundaries
+
+The agent must:
+
+-   Separate verified facts from estimates and opinions.
+-   Timestamp all time-sensitive recommendations.
+-   Ask for confirmation if the available-player pool remains ambiguous.
+-   Present a decisive recommendation, not merely a list of possibilities.
+-   Adapt to the actual draft instead of rigidly following a predetermined position-by-round plan.
+-   Preserve user preferences when supplied, but disclose when fandom or avoidance materially reduces expected value.
+-   Never claim it submitted a Sleeper pick, waiver or trade unless a separate authorized integration actually completed the action.
+
+14. Pre-Draft Checklist
+
+-   ☒ PuntOff's fixed 9th draft slot is confirmed.
+-   ☐ Refresh half-PPR projections, tiers and Sleeper ADP.
+-   ☐ Refresh injuries, suspensions, holdouts and depth charts.
+-   ☐ Create an overall board plus RB, WR, QB and TE tiers.
+-   ☐ Mark “do not draft at current price” players with explicit reasons.
+-   ☐ Prepare preferred pairs for picks 9/12, 29/32 and 49/52.
+-   ☐ Verify draft start time and timezone.
+-   ☐ Test live polling of the Sleeper draft-picks endpoint.
+
+------------------------------------------------------------------------
+
+Important limitation
+
+This is the agent's strategy and operating policy—not a frozen 2026 player ranking. The player board should be generated as a separate, date-stamped dataset and refreshed immediately before the draft.
