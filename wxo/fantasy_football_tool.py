@@ -138,19 +138,29 @@ def get_available_players(draft_id: str, position: str, limit: int = 20) -> str:
         JSON string with top undrafted players sorted by rank, including name, team, position, age.
     """
     try:
-        # Fetch draft picks and all players in parallel (sequential here for simplicity)
         picks = _get(f"https://api.sleeper.app/v1/draft/{draft_id}/picks")
-        players = _get("https://api.sleeper.app/v1/players/nfl")
-
         pos = position.strip().upper()
         limit = min(int(limit), 50)
 
         # Build set of already-drafted player IDs
-        drafted_ids = set()
-        for pick in picks:
-            pid = pick.get("player_id")
-            if pid:
-                drafted_ids.add(str(pid))
+        drafted_ids = {str(pick.get("player_id")) for pick in picks if pick.get("player_id")}
+
+        # DEF: Sleeper has no search_rank for defenses — use curated ranking
+        if pos == "DEF":
+            def_rankings = [
+                "SF", "BAL", "BUF", "DET", "GB", "PHI", "KC", "MIN",
+                "HOU", "CLE", "PIT", "DAL", "MIA", "NYJ", "LAC", "SEA",
+                "TB", "DEN", "IND", "NE", "LV", "ARI", "ATL", "CIN",
+                "LAR", "NYG", "CAR", "CHI", "TEN", "JAX", "WAS", "NO",
+            ]
+            available = [
+                {"rank": i + 1, "name": f"{team} Defense", "team": team, "position": "DEF"}
+                for i, team in enumerate(def_rankings)
+                if team not in drafted_ids
+            ]
+            return json.dumps(available[:limit])
+
+        players = _get("https://api.sleeper.app/v1/players/nfl")
 
         # Filter to available players at the requested position
         available = []
