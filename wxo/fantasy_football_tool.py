@@ -345,3 +345,82 @@ def get_position_tiers(draft_id: str, position: str) -> str:
     except Exception as e:
         return json.dumps({"error": str(e)})
 
+
+@tool
+def get_my_roster(draft_id: str) -> str:
+    """
+    Get PuntOff's current roster — all players drafted by PuntOff so far.
+    Always call this before making a draft recommendation to know what positions are filled.
+
+    Args:
+        draft_id: The Sleeper draft ID.
+
+    Returns:
+        Plain text showing PuntOff's drafted players by position,
+        current roster composition, and remaining needs.
+    """
+    try:
+        PUNTOFF_USER_ID = "1393322190824284160"
+
+        picks = _get(f"https://api.sleeper.app/v1/draft/{draft_id}/picks")
+
+        # Filter to PuntOff's picks only
+        my_picks = [p for p in picks if str(p.get("picked_by") or "") == PUNTOFF_USER_ID]
+
+        if not my_picks:
+            return "PuntOff has not made any picks yet."
+
+        # Build roster grouped by position
+        roster = {}
+        for pick in my_picks:
+            m = pick.get("metadata") or {}
+            name = (str(m.get("first_name") or "") + " " + str(m.get("last_name") or "")).strip()
+            pos = str(m.get("position") or "?")
+            team = str(m.get("team") or "")
+            pick_no = int(pick.get("pick_no") or 0)
+            round_no = int(pick.get("round") or 0)
+            if pos not in roster:
+                roster[pos] = []
+            roster[pos].append(f"  Rd{round_no} Pk{pick_no}: {name} ({team})")
+
+        # Starting lineup requirements from knowledge base
+        lineup = {"QB": 1, "RB": 2, "WR": 2, "TE": 1, "K": 1, "DEF": 1}
+        bench_spots = 8
+        total_picks = 17
+
+        lines = [f"PuntOff Roster ({len(my_picks)}/{total_picks} picks made):"]
+        lines.append("")
+
+        # Show players by position
+        for pos in ["QB", "RB", "WR", "TE", "K", "DEF"]:
+            players = roster.get(pos, [])
+            needed = lineup.get(pos, 1)
+            status = "✓" if len(players) >= needed else f"NEED {needed - len(players)}"
+            lines.append(f"{pos} [{status}]:")
+            if players:
+                lines.extend(players)
+            else:
+                lines.append("  (none)")
+
+        # Roster needs summary
+        lines.append("")
+        lines.append("Positional needs:")
+        needs = []
+        for pos, needed in lineup.items():
+            count = len(roster.get(pos, []))
+            if count < needed:
+                needs.append(f"{pos} ({needed - count} more needed for starting lineup)")
+        if needs:
+            for n in needs:
+                lines.append(f"  - {n}")
+        else:
+            lines.append("  Starting lineup positions filled. Focus on depth and upside.")
+
+        picks_remaining = total_picks - len(my_picks)
+        lines.append(f"\nPicks remaining: {picks_remaining}")
+
+        return "\n".join(lines)
+
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
