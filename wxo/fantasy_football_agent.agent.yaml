@@ -27,6 +27,8 @@ instructions: |
   - get_position_tiers: Get live tier breakdown by position with drafted players removed — BEST tool for draft recommendations
   - get_available_players: Get top undrafted players by position as a flat ranked list
   - get_all_drafted_players: Get all players drafted so far — use when user asks who has been drafted
+  - get_trending_players: Get players trending up (adds) or down (drops) on waivers in last 24 hours — use for news signals
+  - get_player_news: Get injury status, depth chart position and details for a specific player by name
   - get_draft_picks: Get full pick details for a draft
   - get_player_rankings: Get all players by position ignoring draft state — do NOT use for recommendations
 
@@ -54,5 +56,7 @@ tools:
   - get_position_tiers
   - get_available_players
   - get_all_drafted_players
+  - get_trending_players
+  - get_player_news
   - get_draft_picks
   - get_player_rankings

@@ -424,3 +424,123 @@ def get_my_roster(draft_id: str) -> str:
     except Exception as e:
         return json.dumps({"error": str(e)})
 
+
+@tool
+def get_trending_players(trend_type: str = "add", limit: int = 15) -> str:
+    """
+    Get trending NFL players being added or dropped on Sleeper waiver wire.
+    Players trending up (adds) signal positive news: injuries to starters, breakout performances,
+    depth chart changes, or upcoming favorable matchups.
+    Players trending down (drops) signal negative news: injuries, benching, or poor performance.
+
+    Args:
+        trend_type: Type of trend to fetch. Use "add" for players being added (positive news),
+                    or "drop" for players being dropped (negative news). Defaults to "add".
+        limit: Number of trending players to return. Defaults to 15, max 25.
+
+    Returns:
+        Plain text list of trending players with name, position, team, injury status,
+        and add/drop count showing how much waiver activity they have seen in the last 24 hours.
+    """
+    try:
+        limit = min(int(limit), 25)
+        trend = "add" if trend_type.lower() != "drop" else "drop"
+
+        # Fetch trending players (last 24 hours)
+        trending = _get(
+            f"https://api.sleeper.app/v1/players/nfl/trending/{trend}"
+            f"?lookback_hours=24&limit={limit}"
+        )
+
+        if not trending:
+            return f"No trending {trend} data available."
+
+        # Fetch player details for names
+        players = _get("https://api.sleeper.app/v1/players/nfl")
+
+        lines = [f"Top {limit} trending {trend.upper()}S (last 24 hours):"]
+        lines.append("")
+
+        for i, item in enumerate(trending[:limit], 1):
+            pid = str(item.get("player_id", ""))
+            count = int(item.get("count", 0))
+            p = players.get(pid, {})
+            name = (str(p.get("first_name") or "") + " " + str(p.get("last_name") or "")).strip()
+            pos = str(p.get("position") or p.get("fantasy_positions", ["?"])[0] if p.get("fantasy_positions") else "?")
+            team = str(p.get("team") or "FA")
+            injury = str(p.get("injury_status") or "")
+            injury_str = f" ⚠️ {injury}" if injury else ""
+            lines.append(f"{i}. {name} ({pos}, {team}) — {count:,} {trend}s{injury_str}")
+
+        lines.append("")
+        lines.append("Note: High add counts = positive news (starter injury, depth chart rise, favourable matchup).")
+        lines.append("Cross-reference with official team sources before acting on waiver trends.")
+
+        return "\n".join(lines)
+
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@tool
+def get_player_news(player_name: str) -> str:
+    """
+    Get current injury status and fantasy-relevant info for a specific NFL player from Sleeper.
+
+    Args:
+        player_name: Full or partial name of the player (e.g. "Christian McCaffrey", "McCaffrey").
+
+    Returns:
+        Plain text with the player's current injury status, depth chart position,
+        team, position, age, and years of experience.
+    """
+    try:
+        players = _get("https://api.sleeper.app/v1/players/nfl")
+
+        name_lower = player_name.lower().strip()
+
+        # Search by full name or partial match
+        matches = []
+        for pid, p in players.items():
+            full = (str(p.get("first_name") or "") + " " + str(p.get("last_name") or "")).strip().lower()
+            search = str(p.get("search_full_name") or "").lower()
+            if name_lower in full or name_lower in search:
+                rank = p.get("search_rank") or 9999
+                matches.append((rank, pid, p))
+
+        if not matches:
+            return f"No player found matching '{player_name}'. Try a different spelling."
+
+        # Sort by rank and take best match
+        matches.sort(key=lambda x: x[0])
+        _, pid, p = matches[0]
+
+        name = (str(p.get("first_name") or "") + " " + str(p.get("last_name") or "")).strip()
+        pos = str(p.get("position") or "")
+        team = str(p.get("team") or "Free Agent")
+        injury_status = str(p.get("injury_status") or "None reported")
+        injury_body = str(p.get("injury_body_part") or "")
+        injury_notes = str(p.get("injury_notes") or "")
+        depth_pos = str(p.get("depth_chart_position") or "")
+        depth_order = p.get("depth_chart_order")
+        age = p.get("age")
+        years_exp = p.get("years_exp")
+        status = str(p.get("status") or "")
+        practice = str(p.get("practice_participation") or "")
+
+        lines = [f"{name} — {pos}, {team}"]
+        lines.append(f"Status: {status}")
+        lines.append(f"Injury: {injury_status}" + (f" ({injury_body})" if injury_body else ""))
+        if injury_notes:
+            lines.append(f"Notes: {injury_notes}")
+        if practice:
+            lines.append(f"Practice: {practice}")
+        if depth_pos and depth_order:
+            lines.append(f"Depth chart: {depth_pos} #{depth_order}")
+        lines.append(f"Age: {age} | Years exp: {years_exp}")
+
+        return "\n".join(lines)
+
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
