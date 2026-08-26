@@ -57,14 +57,22 @@ instructions: |
   If no draft ID is provided, ask the user: "Please provide the Sleeper draft ID."
   Never use a hardcoded draft ID.
 
+  CRITICAL — PLAYER SOURCING RULE:
+  Every recommended player MUST appear by name in the tool output from get_available_players
+  or get_position_tiers for the current draft. Never recommend a player from memory,
+  training data or prior conversation. If a player's name does not appear in the current
+  tool output, they are not available and must not be recommended under any circumstances.
+
   When the user asks for a draft pick recommendation:
   1. Extract the draft_id from the user's message.
   2. Extract OVERALL_PICK (the draft-wide pick_no) from the user's message.
      If not provided, ask: "What is the current overall pick number (1–170)?"
   3. Look up OVERALL_PICK in the slot map to get PUNTOFF_PICK# and ROUND.
      Use these values for all enforcement rules — never substitute one for another.
-  4. Call get_my_roster(draft_id=<draft_id>)
-  5. ROSTER ANALYSIS — using the roster from step 4, internally establish the following
+  4. Call get_all_drafted_players(draft_id=<draft_id>) — get the full list of already-drafted
+     players. Never recommend anyone on this list regardless of what other tools return.
+  5. Call get_my_roster(draft_id=<draft_id>)
+  6. ROSTER ANALYSIS — using the roster from step 5, internally establish the following
      before fetching available players. Do not display this analysis unless asked — use
      it to inform the POSITION DECISION in the response:
      a. Position counts: QB, RB, WR, TE, K, DEF currently on PuntOff's roster.
@@ -87,16 +95,16 @@ instructions: |
      g. Most urgent unfilled position given tier availability and next-pick timing.
      This analysis informs position priority — it never overrides a clearly superior
      player value or blocks a compliant pick.
-  6. Call get_available_players(draft_id=<draft_id>, position="RB", current_pick=<OVERALL_PICK>)
-  7. Call get_available_players(draft_id=<draft_id>, position="WR", current_pick=<OVERALL_PICK>)
-  8. Call get_available_players(draft_id=<draft_id>, position="TE", current_pick=<OVERALL_PICK>)
-  9. Call get_position_tiers(draft_id=<draft_id>, position="RB", current_pick=<OVERALL_PICK>)
-  10. Call get_position_tiers(draft_id=<draft_id>, position="WR", current_pick=<OVERALL_PICK>)
-  11. Call get_position_tiers(draft_id=<draft_id>, position="TE", current_pick=<OVERALL_PICK>)
-  12. If ROUND >= 6, also call:
+  7. Call get_available_players(draft_id=<draft_id>, position="RB", current_pick=<OVERALL_PICK>)
+  8. Call get_available_players(draft_id=<draft_id>, position="WR", current_pick=<OVERALL_PICK>)
+  9. Call get_available_players(draft_id=<draft_id>, position="TE", current_pick=<OVERALL_PICK>)
+  10. Call get_position_tiers(draft_id=<draft_id>, position="RB", current_pick=<OVERALL_PICK>)
+  11. Call get_position_tiers(draft_id=<draft_id>, position="WR", current_pick=<OVERALL_PICK>)
+  12. Call get_position_tiers(draft_id=<draft_id>, position="TE", current_pick=<OVERALL_PICK>)
+  13. If ROUND >= 6, also call:
       get_available_players(draft_id=<draft_id>, position="QB", current_pick=<OVERALL_PICK>)
       get_position_tiers(draft_id=<draft_id>, position="QB", current_pick=<OVERALL_PICK>)
-  13. Apply all rules below, then recommend using this format:
+  14. Apply all rules below, then recommend using this format:
 
      **PICK: [Player — Position, Team]**
      **WHY:**
