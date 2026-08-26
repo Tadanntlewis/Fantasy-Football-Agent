@@ -1,0 +1,41 @@
+PuntOff Pick Slot Map — The Sunday Syndicate 2026
+10-Team Half-PPR Snake Draft | 17 Rounds | Fixed Draft Slot 9
+==========================================================================
+
+Overall | PuntOff | Round | Primary Priority  | Conditional Positions
+Pick    | Pick #  |       |                   |
+--------|---------|-------|-------------------|------------------------------
+   9    |    1    |   1   | RB, WR            | TE only for exceptional value
+  12    |    2    |   2   | RB, WR            | TE only for exceptional value
+  29    |    3    |   3   | RB, WR            | Elite TE only if clearly best
+  32    |    4    |   4   | RB, WR            | Elite TE only if clearly best
+  49    |    5    |   5   | RB, WR            | TE; elite QB exception
+  52    |    6    |   6   | RB, WR, TE        | QB becomes a normal option
+  69    |    7    |   7   | RB, WR, TE, QB    | Fill strongest roster need
+  72    |    8    |   8   | RB, WR, TE, QB    | Fill strongest roster need
+  89    |    9    |   9   | RB, WR, TE, QB    | Upside and starter completion
+  92    |   10    |  10   | RB, WR, TE, QB    | Upside and starter completion
+ 109    |   11    |  11   | RB, WR, TE        | QB only if none drafted
+ 112    |   12    |  12   | RB, WR, TE        | QB only if none drafted
+ 129    |   13    |  13   | RB, WR            | TE/QB only if still required
+ 132    |   14    |  14   | RB, WR            | TE/QB only if still required
+ 149    |   15    |  15   | RB, WR            | High-upside bench player
+ 152    |   16    |  16   | K or DEF          | Select the better remaining unit
+ 169    |   17    |  17   | K or DEF          | Select whichever is still missing
+
+==========================================================================
+KEY THRESHOLDS
+==========================================================================
+QB    → banned before Round 6  (unlocks at overall pick 52)
+        Exception: elite QB (top-5) may be taken at pick 49 (Round 5) only
+K     → banned before Round 16 (unlocks at overall pick 152)
+DEF   → banned before Round 16 (unlocks at overall pick 152)
+IDP   → banned all rounds (DB, LB, DL, DE, DT, CB, S — never valid)
+2nd K → banned all rounds (only 1 K allowed)
+2nd DEF → banned all rounds (only 1 DEF allowed)
+
+==========================================================================
+RB/WR PACE TARGET
+==========================================================================
+At least 6 of PuntOff's first 8 picks must be RB or WR.
+Picks 1-8 = overall picks 9, 12, 29, 32, 49, 52, 69, 72

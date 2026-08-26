@@ -144,21 +144,30 @@ def get_available_players(draft_id: str, position: str, current_pick: int = 0, l
         pos = position.strip().upper()
         limit = min(int(limit), 50)
 
-        # Calculate current round (10-team league)
-        current_round = ((int(current_pick) - 1) // 10) + 1 if int(current_pick) > 0 else 0
+        # PuntOff slot map: overall pick → round (10-team half-PPR snake, draft slot 9)
+        SLOT_MAP = {
+            9: 1, 12: 2, 29: 3, 32: 4, 49: 5, 52: 6, 69: 7, 72: 8,
+            89: 9, 92: 10, 109: 11, 112: 12, 129: 13, 132: 14, 149: 15, 152: 16, 169: 17
+        }
+        # Derive round from slot map; fall back to formula only if pick not in map
+        cp = int(current_pick)
+        if cp > 0:
+            current_round = SLOT_MAP.get(cp, ((cp - 1) // 10) + 1)
+        else:
+            current_round = 0
 
         # Hard enforcement: K and DEF are banned before Round 16
         if pos in ("K", "DEF") and current_round > 0 and current_round < 16:
             return json.dumps({
                 "blocked": True,
-                "reason": f"K and DEF cannot be drafted before Round 16. Current round is {current_round}. Do not suggest K or DEF — recommend RB, WR, QB, or TE instead."
+                "reason": f"K and DEF cannot be drafted before Round 16. Current round is {current_round} (overall pick {cp}). Do not suggest K or DEF — recommend RB, WR, QB, or TE instead."
             })
 
-        # Hard enforcement: QB is banned before Round 6 unless explicitly requested
+        # Hard enforcement: QB is banned before Round 6
         if pos == "QB" and current_round > 0 and current_round < 6:
             return json.dumps({
                 "blocked": True,
-                "reason": f"QB cannot be drafted before Round 6. Current round is {current_round}. Do not suggest QB — recommend RB, WR, or TE instead. Only return QB data if the user explicitly asks for a QB recommendation."
+                "reason": f"QB cannot be drafted before Round 6. Current round is {current_round} (overall pick {cp}). Do not suggest QB — recommend RB, WR, or TE instead."
             })
 
         # Build set of already-drafted player IDs
@@ -273,16 +282,21 @@ def get_position_tiers(draft_id: str, position: str, current_pick: int = 0) -> s
         with name, team, age and rank for each player.
     """
     try:
-        # Calculate current round (10-team league)
-        current_round = ((int(current_pick) - 1) // 10) + 1 if int(current_pick) > 0 else 0
+        # PuntOff slot map: overall pick → round (10-team half-PPR snake, draft slot 9)
+        SLOT_MAP = {
+            9: 1, 12: 2, 29: 3, 32: 4, 49: 5, 52: 6, 69: 7, 72: 8,
+            89: 9, 92: 10, 109: 11, 112: 12, 129: 13, 132: 14, 149: 15, 152: 16, 169: 17
+        }
+        cp = int(current_pick)
+        current_round = SLOT_MAP.get(cp, ((cp - 1) // 10) + 1) if cp > 0 else 0
 
         # Hard enforcement: K and DEF are banned before Round 16
         if position.strip().upper() in ("K", "DEF") and current_round > 0 and current_round < 16:
-            return f"BLOCKED: K and DEF cannot be drafted before Round 16. Current round is {current_round}. Do not suggest K or DEF — recommend RB, WR, QB, or TE instead."
+            return f"BLOCKED: K and DEF cannot be drafted before Round 16. Current round is {current_round} (overall pick {cp}). Do not suggest K or DEF — recommend RB, WR, QB, or TE instead."
 
-        # Hard enforcement: QB is banned before Round 6 unless explicitly requested
+        # Hard enforcement: QB is banned before Round 6
         if position.strip().upper() == "QB" and current_round > 0 and current_round < 6:
-            return f"BLOCKED: QB cannot be drafted before Round 6. Current round is {current_round}. Do not suggest QB — recommend RB, WR, or TE instead. Only return QB data if the user explicitly asks for a QB recommendation."
+            return f"BLOCKED: QB cannot be drafted before Round 6. Current round is {current_round} (overall pick {cp}). Do not suggest QB — recommend RB, WR, or TE instead."
 
         picks = _get(f"https://api.sleeper.app/v1/draft/{draft_id}/picks")
         players = _get("https://api.sleeper.app/v1/players/nfl")
