@@ -123,7 +123,7 @@ def get_draft_picks(draft_id: str) -> str:
 
 
 @tool
-def get_available_players(draft_id: str, position: str, limit: int = 20) -> str:
+def get_available_players(draft_id: str, position: str, current_pick: int = 0, limit: int = 20) -> str:
     """
     Get top available (undrafted) fantasy football players for a given position.
     Automatically checks the current draft picks and removes already-drafted players.
@@ -132,6 +132,8 @@ def get_available_players(draft_id: str, position: str, limit: int = 20) -> str:
     Args:
         draft_id: The Sleeper draft ID to check current picks against.
         position: Player position to filter by. One of: QB, RB, WR, TE, K, DEF.
+        current_pick: The current overall pick number in the draft (e.g. 9 for pick 9).
+                      Used to enforce round-based restrictions. Pass 0 if unknown.
         limit: Number of top available players to return. Defaults to 20, max 50.
 
     Returns:
@@ -141,6 +143,23 @@ def get_available_players(draft_id: str, position: str, limit: int = 20) -> str:
         picks = _get(f"https://api.sleeper.app/v1/draft/{draft_id}/picks")
         pos = position.strip().upper()
         limit = min(int(limit), 50)
+
+        # Calculate current round (10-team league)
+        current_round = ((int(current_pick) - 1) // 10) + 1 if int(current_pick) > 0 else 0
+
+        # Hard enforcement: K and DEF are banned before Round 16
+        if pos in ("K", "DEF") and current_round > 0 and current_round < 16:
+            return json.dumps({
+                "blocked": True,
+                "reason": f"K and DEF cannot be drafted before Round 16. Current round is {current_round}. Do not suggest K or DEF — recommend RB, WR, QB, or TE instead."
+            })
+
+        # Hard enforcement: QB is banned before Round 6 unless explicitly requested
+        if pos == "QB" and current_round > 0 and current_round < 6:
+            return json.dumps({
+                "blocked": True,
+                "reason": f"QB cannot be drafted before Round 6. Current round is {current_round}. Do not suggest QB — recommend RB, WR, or TE instead. Only return QB data if the user explicitly asks for a QB recommendation."
+            })
 
         # Build set of already-drafted player IDs
         drafted_ids = {str(pick.get("player_id")) for pick in picks if pick.get("player_id")}
@@ -237,7 +256,7 @@ def get_all_drafted_players(draft_id: str, round_number: int = 0) -> str:
 
 
 @tool
-def get_position_tiers(draft_id: str, position: str) -> str:
+def get_position_tiers(draft_id: str, position: str, current_pick: int = 0) -> str:
     """
     Get live fantasy football player tiers for a position, with already-drafted players removed.
     Tiers are calculated dynamically from Sleeper rankings using rank gaps.
@@ -246,12 +265,25 @@ def get_position_tiers(draft_id: str, position: str) -> str:
     Args:
         draft_id: The Sleeper draft ID — used to exclude already-drafted players.
         position: Player position. One of: QB, RB, WR, TE, K, DEF.
+        current_pick: The current overall pick number in the draft (e.g. 9 for pick 9).
+                      Used to enforce round-based restrictions. Pass 0 if unknown.
 
     Returns:
         Plain text tier breakdown showing available players grouped by tier,
         with name, team, age and rank for each player.
     """
     try:
+        # Calculate current round (10-team league)
+        current_round = ((int(current_pick) - 1) // 10) + 1 if int(current_pick) > 0 else 0
+
+        # Hard enforcement: K and DEF are banned before Round 16
+        if position.strip().upper() in ("K", "DEF") and current_round > 0 and current_round < 16:
+            return f"BLOCKED: K and DEF cannot be drafted before Round 16. Current round is {current_round}. Do not suggest K or DEF — recommend RB, WR, QB, or TE instead."
+
+        # Hard enforcement: QB is banned before Round 6 unless explicitly requested
+        if position.strip().upper() == "QB" and current_round > 0 and current_round < 6:
+            return f"BLOCKED: QB cannot be drafted before Round 6. Current round is {current_round}. Do not suggest QB — recommend RB, WR, or TE instead. Only return QB data if the user explicitly asks for a QB recommendation."
+
         picks = _get(f"https://api.sleeper.app/v1/draft/{draft_id}/picks")
         players = _get("https://api.sleeper.app/v1/players/nfl")
 
