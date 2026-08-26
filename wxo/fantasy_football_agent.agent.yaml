@@ -104,7 +104,14 @@ instructions: |
   13. If ROUND >= 6, also call:
       get_available_players(draft_id=<draft_id>, position="QB", current_pick=<OVERALL_PICK>)
       get_position_tiers(draft_id=<draft_id>, position="QB", current_pick=<OVERALL_PICK>)
-  14. Apply all rules below, then recommend using this format:
+  14. Before displaying any recommendation, call validate_pick(draft_id=<draft_id>, player_name=<proposed player name>).
+      - If the result is UNAVAILABLE → discard the player immediately, do not show them, and re-run
+        selection from step 7 to pick the next best available player.
+      - If the result is UNKNOWN → mark the recommendation PROVISIONAL.
+      - Only display a recommendation when validate_pick returns AVAILABLE.
+      - Run validate_pick for the primary recommendation AND both alternatives.
+        Discard any alternative that returns UNAVAILABLE and replace with the next best.
+  15. Apply all rules below, then recommend using this format:
 
      **PICK: [Player — Position, Team]**
      **WHY:**
@@ -259,6 +266,13 @@ instructions: |
   Prefer an elite RB or WR value over a QB. Select QB only when the QB offers a clear
   weekly advantage over every remaining RB and WR and no comparable RB or WR value remains.
 
+  RB SATURATION RULE:
+  Once PuntOff has 5 or more RBs on the roster, slightly increase the priority of a
+  reliable WR over the next available RB — unless the RB represents exceptional value
+  (elite tier, clear role security, or final player in a significantly superior tier).
+  When RB count >= 5, default to the best available WR unless the RB clearly wins the
+  position-urgency comparison.
+
   ADDITIONAL HARD DRAFT CONSTRAINTS (enforced from knowledge base Section 7):
 
   Constraint #7 — Injury disclosure:
@@ -296,3 +310,4 @@ tools:
   - get_player_news
   - get_draft_picks
   - get_player_rankings
+  - validate_pick

@@ -590,3 +590,55 @@ def get_player_news(player_name: str) -> str:
     except Exception as e:
         return json.dumps({"error": str(e)})
 
+
+
+@tool
+def validate_pick(draft_id: str, player_name: str) -> str:
+    """
+    Validate that a proposed pick is still available (not already drafted).
+    MUST be called before displaying any player recommendation.
+    If this tool returns UNAVAILABLE, the player must be discarded and a new
+    recommendation generated from the available player pool.
+
+    Args:
+        draft_id: The Sleeper draft ID.
+        player_name: The full name of the player being considered (e.g. "Ja'Marr Chase").
+
+    Returns:
+        AVAILABLE — player has not been drafted and may be recommended.
+        UNAVAILABLE — player has already been drafted; discard and pick again.
+    """
+    try:
+        picks = _get(f"https://api.sleeper.app/v1/draft/{draft_id}/picks")
+        players = _get("https://api.sleeper.app/v1/players/nfl")
+
+        # Build set of drafted player names (normalised to lowercase)
+        drafted_names = set()
+        drafted_ids = set()
+        for pick in picks:
+            pid = str(pick.get("player_id") or "")
+            if pid:
+                drafted_ids.add(pid)
+            m = pick.get("metadata") or {}
+            first = str(m.get("first_name") or "").strip().lower()
+            last = str(m.get("last_name") or "").strip().lower()
+            if first or last:
+                drafted_names.add(f"{first} {last}".strip())
+
+        # Also check by player_id lookup for the given name
+        name_lower = player_name.strip().lower()
+
+        # Check by name match
+        if name_lower in drafted_names:
+            return f"UNAVAILABLE — {player_name} has already been drafted. Discard this recommendation and select a different player from the available pool."
+
+        # Check by Sleeper player ID match
+        for pid, p in players.items():
+            full = (str(p.get("first_name") or "") + " " + str(p.get("last_name") or "")).strip().lower()
+            if full == name_lower and pid in drafted_ids:
+                return f"UNAVAILABLE — {player_name} has already been drafted. Discard this recommendation and select a different player from the available pool."
+
+        return f"AVAILABLE — {player_name} has not been drafted and may be recommended."
+
+    except Exception as e:
+        return f"UNKNOWN — Could not verify availability for {player_name}: {str(e)}. Do not recommend this player until availability is confirmed."
