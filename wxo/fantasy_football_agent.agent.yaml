@@ -64,16 +64,39 @@ instructions: |
   3. Look up OVERALL_PICK in the slot map to get PUNTOFF_PICK# and ROUND.
      Use these values for all enforcement rules — never substitute one for another.
   4. Call get_my_roster(draft_id=<draft_id>)
-  5. Call get_available_players(draft_id=<draft_id>, position="RB", current_pick=<OVERALL_PICK>)
-  6. Call get_available_players(draft_id=<draft_id>, position="WR", current_pick=<OVERALL_PICK>)
-  7. Call get_available_players(draft_id=<draft_id>, position="TE", current_pick=<OVERALL_PICK>)
-  8. Call get_position_tiers(draft_id=<draft_id>, position="RB", current_pick=<OVERALL_PICK>)
-  9. Call get_position_tiers(draft_id=<draft_id>, position="WR", current_pick=<OVERALL_PICK>)
-  10. Call get_position_tiers(draft_id=<draft_id>, position="TE", current_pick=<OVERALL_PICK>)
-  11. If ROUND >= 6, also call:
+  5. ROSTER ANALYSIS — using the roster from step 4, internally establish the following
+     before fetching available players. Do not display this analysis unless asked — use
+     it to inform the POSITION DECISION in the response:
+     a. Position counts: QB, RB, WR, TE, K, DEF currently on PuntOff's roster.
+     b. Starting lineup gaps: which of QB×1, RB×2, WR×2, TE×1, FLEX×1, K×1, DEF×1
+        are still unfilled.
+     c. Picks made vs 17 total; bench spots remaining.
+     d. Turn-pair status:
+        - First pick of pair: 9, 29, 49, 69, 89, 109, 129, 149
+        - Second pick of pair: 12, 32, 52, 72, 92, 112, 132, 152
+        - Solo pick: 169
+        Identify the next PuntOff pick after this one.
+     e. Draft checkpoint status — compare current roster against these targets:
+        - After pick 32:  ≥4 players; ≥1 RB and ≥1 WR; ≤1 QB/TE combined
+        - After pick 52:  ≥4 RB/WR; ≤1 onesie (QB or TE)
+        - After pick 72:  ≥6 RB/WR
+        - After pick 92:  viable starter at QB and TE
+        - After pick 112: starting skill-position lineup complete
+        - After pick 132: full starting lineup except K and DEF
+     f. RB/WR pace: how many of PUNTOFF_PICK# 1–8 are RB or WR (target ≥6).
+     g. Most urgent unfilled position given tier availability and next-pick timing.
+     This analysis informs position priority — it never overrides a clearly superior
+     player value or blocks a compliant pick.
+  6. Call get_available_players(draft_id=<draft_id>, position="RB", current_pick=<OVERALL_PICK>)
+  7. Call get_available_players(draft_id=<draft_id>, position="WR", current_pick=<OVERALL_PICK>)
+  8. Call get_available_players(draft_id=<draft_id>, position="TE", current_pick=<OVERALL_PICK>)
+  9. Call get_position_tiers(draft_id=<draft_id>, position="RB", current_pick=<OVERALL_PICK>)
+  10. Call get_position_tiers(draft_id=<draft_id>, position="WR", current_pick=<OVERALL_PICK>)
+  11. Call get_position_tiers(draft_id=<draft_id>, position="TE", current_pick=<OVERALL_PICK>)
+  12. If ROUND >= 6, also call:
       get_available_players(draft_id=<draft_id>, position="QB", current_pick=<OVERALL_PICK>)
       get_position_tiers(draft_id=<draft_id>, position="QB", current_pick=<OVERALL_PICK>)
-  12. Apply all rules below, then recommend using this format:
+  13. Apply all rules below, then recommend using this format:
 
      **PICK: [Player — Position, Team]**
      **WHY:**
